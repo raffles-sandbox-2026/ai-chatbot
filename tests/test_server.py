@@ -164,6 +164,8 @@ class ChatHTTPTests(unittest.TestCase):
     def test_temperature_negation_replacement_and_combined_sweetness_requests(self):
         for request, expected in (("no ice", "No ice"), ("hot instead of iced", "Hot"),
                                   ("iced instead of hot", "Iced (peng)"),
+                                  ("not hot, iced please", "Iced (peng)"),
+                                  ("instead of hot, iced please", "Iced (peng)"),
                                   ("iced, less sweet", "Iced (peng)")):
             with self.subTest(request=request):
                 status, data = self.chat("one teh tarik, " + request)
@@ -173,6 +175,12 @@ class ChatHTTPTests(unittest.TestCase):
                     self.assertNotIn("Iced (peng)", data["reply"])
                 if "less sweet" in request:
                     self.assertIn("siew dai", data["reply"])
+
+    def test_rejected_extra_sugar_is_not_treated_as_requested_extra_sugar(self):
+        status, data = self.chat("teh tarik, less sweet, not extra sugar")
+        self.assertEqual(status, 200)
+        self.assertIn("siew dai", data["reply"])
+        self.assertNotIn("Ask for more sugar", data["reply"])
 
     def test_config_reports_mode_without_leaking_key(self):
         with patch.dict(os.environ, {"OPENAI_API_KEY": "test-secret-do-not-expose"}):

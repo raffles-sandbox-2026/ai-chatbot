@@ -113,25 +113,26 @@ def demo_reply(messages):
         kind, item = order
         order_note = note + " No real orders are placed."
         if kind == "drink":
-            # Read the requested replacement, not the temperature being replaced.
-            temperature_prompt = re.split(r"\b(?:instead of|rather than)\b", prompt)[0]
-            temp_words = set(re.findall(r"[a-z]+", temperature_prompt))
-            if re.search(r"\b(?:no|without)\s+(?:any\s+)?ice\b", temperature_prompt):
+            # Ignore explicitly rejected modifier phrases wherever they occur.
+            # This remains a small phrase menu, not general language understanding.
+            drink_prompt = re.sub(r"\b(?:not|instead of|rather than)\s+(?:(?:extra|more|less|added)\s+)?(?:sugar|sweet|hot|warm|iced?|cold|peng)\b", "", prompt)
+            drink_words = set(re.findall(r"[a-z]+", drink_prompt))
+            if re.search(r"\b(?:no|without)\s+(?:any\s+)?ice\b", drink_prompt):
                 temperature = "No ice"
-            elif temp_words & {"hot", "warm"}:
+            elif drink_words & {"hot", "warm"}:
                 temperature = "Hot"
-            elif temp_words & {"ice", "iced", "cold", "peng"}:
+            elif drink_words & {"ice", "iced", "cold", "peng"}:
                 temperature = "Iced (peng)"
             else:
                 temperature = ""
             temperature_note = f" {temperature} for your {item}, hor." if temperature else ""
-            if words & {"sugar", "sweet", "sweeter", "sweetness", "kosong"} or "siew dai" in prompt:
-                if "kosong" in words or re.search(r"\b(?:no|without|zero)\s+(?:any\s+|added\s+)?sugar\b", prompt):
+            if drink_words & {"sugar", "sweet", "sweeter", "sweetness", "kosong"} or "siew dai" in drink_prompt:
+                if "kosong" in drink_words or re.search(r"\b(?:no|without|zero)\s+(?:any\s+|added\s+)?sugar\b", drink_prompt):
                     advice = ("Ask for no added sugar. For milk drinks, ask about unsweetened milk too; "
                               "condensed milk, Milo powder and syrups can already contain sugar.")
-                elif re.search(r"\b(?:more|extra)\s+(?:added\s+)?sugar\b|\bsweeter\b|\bmore sweet\b", prompt):
+                elif re.search(r"\b(?:more|extra)\s+(?:added\s+)?sugar\b|\bsweeter\b|\bmore sweet\b", drink_prompt):
                     advice = "Sweeter, ah? Ask for more sugar or sweetened milk, a little at a time. Don't blame Uncle if too jelak."
-                elif "less" in words or "siew dai" in prompt:
+                elif "less" in drink_words or "siew dai" in drink_prompt:
                     already_less = any("less sweet" in m["content"].lower() or "siew dai" in m["content"].lower()
                                        for m in messages[:-1] if m["role"] == "user")
                     advice = ("Even less sweet now ah? " if already_less else "Less sweet means siew dai, hor. ")
