@@ -115,7 +115,12 @@ async function handleChat(req, res) {
 }
 
 const server = http.createServer((req, res) => {
-  const url = new URL(req.url, `http://${req.headers.host}`);
+  let url;
+  try {
+    url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+  } catch {
+    return send(res, 400, { error: 'Bad request' });
+  }
 
   if (url.pathname === '/api/chat' && req.method === 'POST') {
     handleChat(req, res).catch((err) => {
