@@ -94,6 +94,11 @@ function showError(message) {
 
 function activeChat() { return chats.find((c) => c.id === currentId); }
 
+function closeMobileHistory() {
+  $(".sidebar").classList.remove("history-open");
+  $("#history-toggle").setAttribute("aria-expanded", "false");
+}
+
 function makeMessage(role, content, pending = false) {
   const item = document.createElement("article");
   item.className = `message ${role}${pending ? " pending" : ""}`;
@@ -132,6 +137,7 @@ function render() {
     if (saved.id === currentId) button.setAttribute("aria-current", "page");
     button.addEventListener("click", () => {
       if (busy) return;
+      closeMobileHistory();
       currentId = saved.id;
       $("#prompt").value = "";
       showError("");
@@ -208,6 +214,7 @@ $("#prompt").addEventListener("keydown", (event) => {
 $("#send").addEventListener("click", () => { if (busy) controller?.abort("stopped"); });
 $("#new-chat").addEventListener("click", () => {
   if (busy) return;
+  closeMobileHistory();
   currentId = null;
   $("#prompt").value = "";
   showError("");
@@ -236,6 +243,11 @@ for (const selector of ["#about-button", "#details-button"]) {
   $(selector).addEventListener("click", () => $("#about-dialog").showModal());
 }
 $("#close-about").addEventListener("click", () => $("#about-dialog").close());
+$("#history-toggle").addEventListener("click", () => {
+  const open = $("#history-toggle").getAttribute("aria-expanded") !== "true";
+  $("#history-toggle").setAttribute("aria-expanded", String(open));
+  $(".sidebar").classList.toggle("history-open", open);
+});
 
 async function configure() {
   try {

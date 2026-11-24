@@ -15,7 +15,8 @@
   <div class="app-shell">
     <aside class="sidebar" aria-label="Conversations">
       <a class="brand" href="/" aria-label="Uncle Says home"><img class="brand-icon" src="/favicon.svg" alt=""><span>Uncle Says<small>KOPITIAM CHAT CLUB</small></span></a>
-      <button id="new-chat" class="new-chat"><span aria-hidden="true">＋</span> New kopi session <span class="new-arrow" aria-hidden="true">↗</span></button>
+      <button id="history-toggle" class="history-toggle" aria-controls="chat-list history-empty" aria-expanded="false">History</button>
+      <button id="new-chat" class="new-chat" aria-label="New kopi session"><span aria-hidden="true">+</span><span class="desktop-label">New kopi session</span><span class="phone-label">New chat</span><span class="new-arrow" aria-hidden="true">↗</span></button>
       <div class="section-label">Previously, at this table</div>
       <nav id="chat-list" aria-label="Chat history"></nav>
       <p id="history-empty" class="history-empty">No gossip yet.<br>Don’t shy. Say something lah.</p>
@@ -31,7 +32,7 @@
           <div class="hero">
             <div class="hero-copy"><div class="eyebrow"><span class="little-star" aria-hidden="true"></span> KOPI HOT. TAKES HOTTER.</div>
               <h1 id="welcome-title">Come, sit.<br>What you <em>want?</em></h1>
-              <p class="welcome-copy">One grumpy uncle. Zero sugar-coating.<br>Tell him your problems. He’ll probably complain too.</p>
+              <p class="welcome-copy">One grumpy uncle. Zero sugar-coating. <br>Tell him your problems. He’ll probably complain too.</p>
               <div class="character-tags"><span>Extra gao Singlish</span><span>Mildly rude, mostly right*</span></div>
             </div>
             <figure class="uncle-portrait"><img src="/uncle.svg" alt="An illustrated kopitiam uncle with glasses, a singlet and a kopi cup"><figcaption>UNSOLICITED ADVICE <span>Free. Kopi not included.</span></figcaption></figure>
