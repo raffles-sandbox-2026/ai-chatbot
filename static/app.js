@@ -1,7 +1,7 @@
 "use strict";
 
 const $ = (selector) => document.querySelector(selector);
-const storageKey = "ai-chatbot.chats.v1";
+const storageKey = "ai-chatbot.chat.v2.";
 const maxChats = 20;
 let chats = [];
 let currentId = null;
@@ -17,18 +17,40 @@ function validMessages(messages) {
       typeof m.content === "string" && m.content.trim().length > 0 && m.content.length <= 4000);
 }
 
-try {
-  const saved = JSON.parse(localStorage.getItem(storageKey) || "[]");
-  if (Array.isArray(saved)) {
-    chats = saved.filter((c) => c && typeof c.id === "string" && typeof c.title === "string" &&
-      c.title.length <= 80 && validMessages(c.messages) && c.messages.length).slice(0, maxChats);
+function readChats() {
+  const saved = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (!key?.startsWith(storageKey)) continue;
+    try {
+      const c = JSON.parse(localStorage.getItem(key));
+      if (c && typeof c.id === "string" && key === storageKey + c.id && typeof c.title === "string" &&
+          c.title.length <= 80 && validMessages(c.messages) && c.messages.length) saved.push(c);
+    } catch { /* Ignore only the damaged entry, not every saved conversation. */ }
   }
-} catch {
-  storageWarning = "Browser storage is unavailable. Chats will last only for this visit.";
+  return saved.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
 }
 
-function save() {
-  try { localStorage.setItem(storageKey, JSON.stringify(chats)); }
+try { chats = readChats().slice(0, maxChats); }
+catch { storageWarning = "Browser storage is unavailable. Chats will last only for this visit."; }
+
+function save(chat, deletedId = null, existing = false) {
+  try {
+    if (deletedId) localStorage.removeItem(storageKey + deletedId);
+    if (chat) {
+      if (existing && !localStorage.getItem(storageKey + chat.id) && !storageWarning) {
+        showError("This chat was deleted in another tab. Start a new chat to continue.");
+        currentId = null;
+        chats = readChats().slice(0, maxChats);
+        return;
+      }
+      chat.updatedAt = Date.now();
+      localStorage.setItem(storageKey + chat.id, JSON.stringify(chat));
+    }
+    const latest = readChats();
+    for (const old of latest.slice(maxChats)) localStorage.removeItem(storageKey + old.id);
+    chats = latest.slice(0, maxChats);
+  }
   catch { showError("Couldn't save this chat in your browser. It will last only for this visit."); }
 }
 
@@ -125,7 +147,7 @@ async function sendMessage(event) {
     chat.messages = [...messages, { role: "assistant", content: result.reply }];
     chats = [chat, ...chats.filter((c) => c.id !== chat.id)].slice(0, maxChats);
     currentId = chat.id;
-    save();
+    save(chat, null, Boolean(existing));
   } catch (error) {
     $("#prompt").value = content;
     const cancelled = controller.signal.aborted;
@@ -163,11 +185,12 @@ $("#new-chat").addEventListener("click", () => {
 $("#clear-chat").addEventListener("click", () => {
   if (busy || !activeChat()) return;
   if (!confirm("Delete this chat from this browser? This can't be undone.")) return;
-  chats = chats.filter((c) => c.id !== currentId);
+  const deletedId = currentId;
+  chats = chats.filter((c) => c.id !== deletedId);
   currentId = null;
   $("#prompt").value = "";
   showError("");
-  save();
+  save(null, deletedId);
   render();
 });
 document.querySelectorAll(".suggestion").forEach((button) => {
@@ -206,3 +229,12 @@ async function configure() {
 
 render();
 configure();
+
+window.addEventListener("storage", (event) => {
+  if (busy || (event.key && !event.key.startsWith(storageKey))) return;
+  try {
+    chats = readChats().slice(0, maxChats);
+    if (currentId && !activeChat()) currentId = null;
+    render();
+  } catch { /* The existing in-memory history remains usable. */ }
+});
