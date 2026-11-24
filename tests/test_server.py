@@ -184,6 +184,12 @@ class OpenAIContractTests(unittest.TestCase):
         with patch("server.urlopen", return_value=io.BytesIO(b'{"output": []}')), self.assertRaises(ValueError):
             ai_reply([{"role": "user", "content": "Hi"}], "fake-test-key")
 
+    def test_model_refusal_is_returned_as_an_assistant_reply(self):
+        result = {"output": [{"type": "message", "content": [{"type": "refusal", "refusal": "I can't help with that request."}]}]}
+        with patch("server.urlopen", return_value=io.BytesIO(json.dumps(result).encode())):
+            reply = ai_reply([{"role": "user", "content": "Hi"}], "fake-test-key")
+        self.assertEqual(reply, "I can't help with that request.")
+
     def test_unicode_reply_is_capped_in_codepoints_and_can_be_sent_back(self):
         result = {"output": [{"type": "message", "content": [{"type": "output_text", "text": "😀" * 5000}]}]}
         with patch("server.urlopen", return_value=io.BytesIO(json.dumps(result).encode())):

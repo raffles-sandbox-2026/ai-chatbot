@@ -109,11 +109,12 @@ def ai_reply(messages, api_key):
     with urlopen(request, timeout=30) as response:
         result = json.loads(response.read(1_000_000))
     parts = [
-        part["text"]
+        part.get("text") if part.get("type") == "output_text" else part["refusal"]
         for item in result.get("output", [])
         if item.get("type") == "message"
         for part in item.get("content", [])
-        if part.get("type") == "output_text" and isinstance(part.get("text"), str)
+        if (part.get("type") == "output_text" and isinstance(part.get("text"), str))
+        or (part.get("type") == "refusal" and isinstance(part.get("refusal"), str))
     ]
     text = "\n".join(parts).strip()
     if not text:
