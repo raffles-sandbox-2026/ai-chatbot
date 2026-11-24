@@ -3,7 +3,6 @@
 import json
 import os
 import socket
-from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.error import HTTPError, URLError
@@ -21,6 +20,14 @@ ASSETS = {
     "/styles.css": ("styles.css", "text/css; charset=utf-8"),
     "/favicon.svg": ("favicon.svg", "image/svg+xml"),
 }
+
+
+def connection_config():
+    if os.getenv("ANTHROPIC_API_KEY", "").strip():
+        return "live", "claude"
+    if os.getenv("OPENAI_API_KEY", "").strip():
+        return "live", "openai"
+    return "demo", "demo"
 
 
 def validate_messages(payload):
@@ -88,7 +95,7 @@ def demo_reply(messages):
         "Hello! This is your chatbot's first home. You can send messages, try a follow-up, "
         "and start a fresh conversation from the sidebar.\n\n"
         "I'm running in demo mode with scripted replies, not a live AI model. "
-        "To get real answers, the server owner can connect an OpenAI API key. "
+        "To get real answers, the server owner can connect a Claude or OpenAI API key. "
         "In the meantime, try one of the starter prompts to explore the experience."
     )
 
@@ -122,6 +129,27 @@ def ai_reply(messages, api_key):
     return text[:MAX_CONTENT]
 
 
+def claude_reply(messages, api_key):
+    request = Request(
+        "https://api.anthropic.com/v1/messages",
+        data=json.dumps({
+            "model": os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5"),
+            "system": SYSTEM_PROMPT,
+            "messages": messages,
+            "max_tokens": 800,
+        }).encode(),
+        headers={"x-api-key": api_key, "anthropic-version": "2023-06-01", "Content-Type": "application/json"},
+        method="POST",
+    )
+    with urlopen(request, timeout=30) as response:
+        result = json.loads(response.read(1_000_000))
+    text = "\n".join(part["text"] for part in result.get("content", [])
+                     if part.get("type") == "text" and isinstance(part.get("text"), str)).strip()
+    if not text:
+        raise ValueError("Claude returned no text.")
+    return text[:MAX_CONTENT]
+
+
 class ChatHandler(BaseHTTPRequestHandler):
     # Bound read time as well as the upstream AI timeout.
     def setup(self):
@@ -152,8 +180,8 @@ class ChatHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         path = self.path.split("?", 1)[0]
         if path == "/api/config":
-            is_live = bool(os.getenv("OPENAI_API_KEY", "").strip())
-            self.send_json(200, {"mode": "live" if is_live else "demo", "maxContent": MAX_CONTENT})
+            mode, provider = connection_config()
+            self.send_json(200, {"mode": mode, "provider": provider, "maxContent": MAX_CONTENT})
         elif path in ASSETS:
             filename, mime = ASSETS[path]
             self.send_content(200, (STATIC / filename).read_bytes(), mime)
@@ -179,14 +207,18 @@ class ChatHandler(BaseHTTPRequestHandler):
             message = str(error) if not isinstance(error, json.JSONDecodeError) else "Invalid JSON."
             self.send_json(400, {"error": message})
             return
-        api_key = os.getenv("OPENAI_API_KEY", "").strip()
-        mode = "live" if api_key else "demo"
-        if payload.get("mode") != mode:
-            self.send_json(409, {"error": "The connection mode changed. Refresh the page before sending; live AI sends your messages to OpenAI."})
+        mode, provider = connection_config()
+        if payload.get("mode") != mode or payload.get("provider") != provider:
+            self.send_json(409, {"error": "The AI connection changed. Refresh the page before sending; live AI sends messages to the displayed provider."})
             return
         try:
-            reply = ai_reply(messages, api_key) if api_key else demo_reply(messages)
-            self.send_json(200, {"reply": reply, "mode": "live" if api_key else "demo"})
+            if provider == "claude":
+                reply = claude_reply(messages, os.environ["ANTHROPIC_API_KEY"].strip())
+            elif provider == "openai":
+                reply = ai_reply(messages, os.environ["OPENAI_API_KEY"].strip())
+            else:
+                reply = demo_reply(messages)
+            self.send_json(200, {"reply": reply, "mode": mode, "provider": provider})
         except HTTPError as error:
             status = 429 if error.code == 429 else 502
             message = "The AI is busy or its quota is exhausted. Please try again later." if status == 429 else "Couldn't reach the AI. The server owner may need to check the API configuration."

@@ -8,6 +8,7 @@ let currentId = null;
 let busy = false;
 let ready = false;
 let live = false;
+let provider = "demo";
 let controller = null;
 let storageWarning = "";
 
@@ -51,7 +52,10 @@ function save(chat, deletedId = null, existing = false) {
     for (const old of latest.slice(maxChats)) localStorage.removeItem(storageKey + old.id);
     chats = latest.slice(0, maxChats);
   }
-  catch { showError("Couldn't save this chat in your browser. It will last only for this visit."); }
+  catch {
+    storageWarning = "Couldn't save this chat in your browser. It will last only for this visit.";
+    showError(storageWarning);
+  }
 }
 
 function showError(message) {
@@ -66,7 +70,7 @@ function makeMessage(role, content, pending = false) {
   item.className = `message ${role}${pending ? " pending" : ""}`;
   const name = document.createElement("div");
   name.className = "message-name";
-  name.textContent = role === "user" ? "You" : (live ? "Assistant" : "Demo assistant");
+  name.textContent = role === "user" ? "You" : (live ? (provider === "claude" ? "Claude" : "Assistant") : "Demo assistant");
   const body = document.createElement("div");
   body.className = "message-body";
   body.textContent = content;
@@ -138,7 +142,7 @@ async function sendMessage(event) {
     const response = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages, mode: live ? "live" : "demo" }),
+      body: JSON.stringify({ messages, mode: live ? "live" : "demo", provider }),
       signal: controller.signal,
     });
     const result = await response.json();
@@ -210,13 +214,16 @@ async function configure() {
     if (!response.ok) throw new Error("Configuration unavailable.");
     const config = await response.json();
     live = config.mode === "live";
+    provider = config.provider;
     ready = true;
-    $("#about-button").textContent = live ? "AI connected ↗" : "Demo preview ↗";
-    $("#mode-label").textContent = live ? "AI connected" : "Demo assistant";
+    const service = provider === "claude" ? "Anthropic" : "OpenAI";
+    const assistant = provider === "claude" ? "Claude" : "AI";
+    $("#about-button").textContent = live ? `${assistant} configured ↗` : "Demo preview ↗";
+    $("#mode-label").textContent = live ? assistant : "Demo assistant";
     if (live) {
-      $("#welcome-note").textContent = "AI connected · A fresh perspective, one message away.";
-      $("#privacy-note").textContent = "AI can make mistakes. Messages are sent to OpenAI; chat history is saved in this browser.";
-      $("#about-mode").textContent = "This server is configured for live AI replies through OpenAI. AI can make mistakes; check important details.";
+      $("#welcome-note").textContent = `${assistant} configured · A fresh perspective, one message away.`;
+      $("#privacy-note").textContent = `AI can make mistakes. Messages are sent to ${service}; chat history is saved in this browser.`;
+      $("#about-mode").textContent = `This server is configured for live AI replies through ${service}. AI can make mistakes; check important details.`;
     }
     if (storageWarning) showError(storageWarning);
   } catch {

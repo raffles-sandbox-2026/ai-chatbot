@@ -8,7 +8,7 @@ from http.server import ThreadingHTTPServer
 from unittest.mock import patch
 from urllib.error import HTTPError, URLError
 
-from server import ChatHandler, MAX_BODY, MAX_CONTENT, ai_reply, validate_messages
+from server import ChatHandler, MAX_BODY, MAX_CONTENT, ai_reply, claude_reply, connection_config, validate_messages
 
 
 class MessageValidationTests(unittest.TestCase):
@@ -52,7 +52,7 @@ class ChatHTTPTests(unittest.TestCase):
         cls.thread.join()
 
     def setUp(self):
-        self.environment = patch.dict(os.environ, {"OPENAI_API_KEY": "", "OPENAI_MODEL": "test-model"})
+        self.environment = patch.dict(os.environ, {"ANTHROPIC_API_KEY": "", "OPENAI_API_KEY": "", "OPENAI_MODEL": "test-model"})
         self.environment.start()
         self.addCleanup(self.environment.stop)
 
@@ -60,7 +60,8 @@ class ChatHTTPTests(unittest.TestCase):
         connection = HTTPConnection(*self.server.server_address, timeout=5)
         try:
             if path == "/api/chat" and isinstance(payload, dict):
-                payload = {"mode": "live" if os.getenv("OPENAI_API_KEY", "").strip() else "demo", **payload}
+                mode, provider = connection_config()
+                payload = {"mode": mode, "provider": provider, **payload}
             body = raw if raw is not None else json.dumps(payload) if payload is not None else None
             connection.request(method, path, body=body, headers=headers or {"Content-Type": "application/json"})
             response = connection.getresponse()
@@ -110,6 +111,24 @@ class ChatHTTPTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertEqual(json.loads(body)["mode"], "demo")
 
+    def test_claude_is_preferred_and_key_never_reaches_config(self):
+        with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-claude-secret", "OPENAI_API_KEY": "test-other-key"}):
+            status, _, body = self.request("GET", "/api/config")
+            with patch("server.claude_reply", return_value="Hello from Claude") as upstream:
+                chat_status, chat = self.chat()
+        self.assertEqual(status, 200)
+        self.assertEqual(json.loads(body)["provider"], "claude")
+        self.assertNotIn(b"secret", body)
+        self.assertEqual(chat_status, 200)
+        self.assertEqual(chat["reply"], "Hello from Claude")
+        upstream.assert_called_once()
+
+    def test_stale_live_provider_cannot_forward_history_to_new_provider(self):
+        with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key"}), patch("server.claude_reply") as upstream:
+            status, _, _ = self.request("POST", "/api/chat", {"mode": "live", "provider": "openai", "messages": [{"role": "user", "content": "private text"}]})
+        self.assertEqual(status, 409)
+        upstream.assert_not_called()
+
     def test_only_public_assets_are_served(self):
         for path in ("/server.py", "/.env", "/.git/config", "/../server.py", "/%2e%2e/server.py"):
             with self.subTest(path=path):
@@ -130,7 +149,7 @@ class ChatHTTPTests(unittest.TestCase):
         self.assertEqual(status, 415)
 
     def test_rejects_excessive_body_before_reading_it(self):
-        status, _, _ = self.request("POST", "/api/chat", raw="x" * (MAX_BODY + 1))
+        status, _, _ = self.request("POST", "/api/chat", raw="", headers={"Content-Type": "application/json", "Content-Length": str(MAX_BODY + 1)})
         self.assertEqual(status, 413)
 
     def test_largest_valid_multilingual_conversation_fits_body_limit(self):
@@ -196,6 +215,27 @@ class OpenAIContractTests(unittest.TestCase):
             reply = ai_reply([{"role": "user", "content": "Hi"}], "fake-test-key")
         self.assertEqual(len(reply), MAX_CONTENT)
         validate_messages({"messages": [{"role": "user", "content": "Hi"}, {"role": "assistant", "content": reply}, {"role": "user", "content": "Again"}]})
+
+
+class ClaudeContractTests(unittest.TestCase):
+    def test_claude_request_and_text_extraction(self):
+        result = {"content": [{"type": "text", "text": "Hello from Claude!"}]}
+        messages = [{"role": "user", "content": "Hi"}]
+        with patch.dict(os.environ, {"ANTHROPIC_MODEL": "claude-haiku-4-5"}), patch("server.urlopen", return_value=io.BytesIO(json.dumps(result).encode())) as upstream:
+            reply = claude_reply(messages, "fake-claude-test-key")
+        self.assertEqual(reply, "Hello from Claude!")
+        request = upstream.call_args.args[0]
+        self.assertEqual(request.full_url, "https://api.anthropic.com/v1/messages")
+        self.assertEqual(request.get_header("X-api-key"), "fake-claude-test-key")
+        self.assertEqual(request.get_header("Anthropic-version"), "2023-06-01")
+        payload = json.loads(request.data)
+        self.assertEqual(payload["messages"], messages)
+        self.assertEqual(payload["model"], "claude-haiku-4-5")
+        self.assertEqual(payload["max_tokens"], 800)
+
+    def test_empty_claude_output_is_an_error(self):
+        with patch("server.urlopen", return_value=io.BytesIO(b'{"content": []}')), self.assertRaises(ValueError):
+            claude_reply([{"role": "user", "content": "Hi"}], "fake-test-key")
 
 
 if __name__ == "__main__":
