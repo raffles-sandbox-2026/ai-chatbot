@@ -225,11 +225,18 @@ document.getElementById('composer').addEventListener('submit', async (e) => {
   const reply = addMsg('pck typing', '...');
   sendBtn.disabled = true;
 
+  // The server keeps the last 40 messages and rejects bodies over 1MB;
+  // drop oldest turns until the payload fits so long chats stay usable.
+  let toSend = history.slice(-40);
+  while (toSend.length > 2 && JSON.stringify({ messages: toSend }).length > 900_000) {
+    toSend = toSend.slice(2);
+  }
+
   try {
     const res = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: history }),
+      body: JSON.stringify({ messages: toSend }),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
