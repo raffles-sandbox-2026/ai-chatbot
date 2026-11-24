@@ -143,6 +143,7 @@ function render() {
       showError("");
       render();
       scrollToBottom();
+      $("#prompt").focus();
     });
     $("#chat-list").append(button);
   }
@@ -232,6 +233,7 @@ $("#clear-chat").addEventListener("click", () => {
   showError("");
   save(null, deletedId);
   render();
+  $("#new-chat").focus();
 });
 document.querySelectorAll(".suggestion").forEach((button) => {
   button.addEventListener("click", () => {
