@@ -171,7 +171,7 @@ document.getElementById('composer').addEventListener('submit', async (e) => {
 
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
-    let buf = '', full = '';
+    let buf = '', full = '', completed = false;
     for (;;) {
       const { done, value } = await reader.read();
       if (done) break;
@@ -183,18 +183,27 @@ document.getElementById('composer').addEventListener('submit', async (e) => {
         if (!line) continue;
         const data = line.slice(5).trim();
         if (data === '[DONE]') continue;
-        try {
-          const obj = JSON.parse(data);
-          if (obj.type === 'content_block_delta' && obj.delta?.text) {
-            full += obj.delta.text;
-            reply.textContent = full;
-            reply.parentElement.classList.remove('typing');
-            chat.scrollTop = chat.scrollHeight;
-          }
-        } catch {}
+        let obj;
+        try { obj = JSON.parse(data); } catch { continue; }
+        if (obj.type === 'content_block_delta' && obj.delta?.text) {
+          full += obj.delta.text;
+          reply.textContent = full;
+          reply.parentElement.classList.remove('typing');
+          chat.scrollTop = chat.scrollHeight;
+        } else if (obj.type === 'message_stop') {
+          completed = true;
+        } else if (obj.type === 'error') {
+          throw new Error(obj.error?.message || 'stream error');
+        }
       }
     }
-    history.push({ role: 'assistant', content: full || '(Chu Kang blur liao, say again?)' });
+    if (completed && full) {
+      history.push({ role: 'assistant', content: full });
+    } else {
+      reply.textContent = full
+        ? full + '\n\n(alamak, reply cut off halfway lah — ask me again!)'
+        : '(Alamak, Chu Kang\'s reply lost liao — try again?)';
+    }
   } catch (err) {
     reply.parentElement.classList.remove('pck', 'typing');
     reply.parentElement.className = 'err';
