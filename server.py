@@ -171,12 +171,17 @@ class ChatHandler(BaseHTTPRequestHandler):
             if not 0 < length <= MAX_BODY:
                 self.send_json(413, {"error": "Your conversation is too large. Start a new chat."})
                 return
-            messages = validate_messages(json.loads(self.rfile.read(length)))
+            payload = json.loads(self.rfile.read(length))
+            messages = validate_messages(payload)
         except (ValueError, UnicodeDecodeError) as error:
             message = str(error) if not isinstance(error, json.JSONDecodeError) else "Invalid JSON."
             self.send_json(400, {"error": message})
             return
         api_key = os.getenv("OPENAI_API_KEY", "").strip()
+        mode = "live" if api_key else "demo"
+        if payload.get("mode") != mode:
+            self.send_json(409, {"error": "The connection mode changed. Refresh the page before sending; live AI sends your messages to OpenAI."})
+            return
         try:
             reply = ai_reply(messages, api_key) if api_key else demo_reply(messages)
             self.send_json(200, {"reply": reply, "mode": "live" if api_key else "demo"})

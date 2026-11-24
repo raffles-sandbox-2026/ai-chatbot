@@ -59,6 +59,8 @@ class ChatHTTPTests(unittest.TestCase):
     def request(self, method, path, payload=None, headers=None, raw=None):
         connection = HTTPConnection(*self.server.server_address, timeout=5)
         try:
+            if path == "/api/chat" and isinstance(payload, dict):
+                payload = {"mode": "live" if os.getenv("OPENAI_API_KEY", "").strip() else "demo", **payload}
             body = raw if raw is not None else json.dumps(payload) if payload is not None else None
             connection.request(method, path, body=body, headers=headers or {"Content-Type": "application/json"})
             response = connection.getresponse()
@@ -94,6 +96,13 @@ class ChatHTTPTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertEqual(json.loads(body)["mode"], "live")
         self.assertNotIn(b"test-secret", body)
+
+    def test_stale_demo_tab_cannot_send_history_to_live_ai(self):
+        with patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}), patch("server.urlopen") as upstream:
+            status, _, body = self.request("POST", "/api/chat", {"mode": "demo", "messages": [{"role": "user", "content": "private demo text"}]})
+        self.assertEqual(status, 409)
+        self.assertIn("Refresh", json.loads(body)["error"])
+        upstream.assert_not_called()
 
     def test_blank_key_stays_in_demo_mode(self):
         with patch.dict(os.environ, {"OPENAI_API_KEY": "  "}):

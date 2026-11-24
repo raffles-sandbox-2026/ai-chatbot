@@ -116,7 +116,7 @@ async function sendMessage(event) {
     const response = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages }),
+      body: JSON.stringify({ messages, mode: live ? "live" : "demo" }),
       signal: controller.signal,
     });
     const result = await response.json();
