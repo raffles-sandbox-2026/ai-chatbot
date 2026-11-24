@@ -150,6 +150,17 @@ class ChatHTTPTests(unittest.TestCase):
                 self.assertEqual(status, 200)
                 self.assertIn(expected, json.loads(body)["reply"])
 
+    def test_explicit_sugar_requests_are_not_all_treated_as_less_sweet(self):
+        for request, expected in (("no added sugar", "Ask for no added sugar"),
+                                  ("more sugar", "Ask for more sugar"),
+                                  ("extra sugar", "Ask for more sugar"),
+                                  ("sugar please", "How sweet you want?")):
+            with self.subTest(request=request):
+                status, data = self.chat("one teh tarik, " + request)
+                self.assertEqual(status, 200)
+                self.assertIn(expected, data["reply"])
+                self.assertIn("scripted demo", data["reply"])
+
     def test_config_reports_mode_without_leaking_key(self):
         with patch.dict(os.environ, {"OPENAI_API_KEY": "test-secret-do-not-expose"}):
             status, _, body = self.request("GET", "/api/config")

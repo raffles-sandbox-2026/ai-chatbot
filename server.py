@@ -114,16 +114,20 @@ def demo_reply(messages):
         order_note = note + " No real orders are placed."
         if kind == "drink":
             if words & {"sugar", "sweet", "sweetness", "kosong"} or "siew dai" in prompt:
-                if "kosong" in words or "no sugar" in prompt or "without sugar" in prompt:
+                if "kosong" in words or re.search(r"\b(?:no|without|zero)\s+(?:any\s+|added\s+)?sugar\b", prompt):
                     advice = ("Ask for no added sugar. For milk drinks, ask about unsweetened milk too; "
                               "condensed milk, Milo powder and syrups can already contain sugar.")
-                else:
+                elif re.search(r"\b(?:more|extra)\s+(?:added\s+)?sugar\b|\bsweeter\b|\bmore sweet\b", prompt):
+                    advice = "Sweeter, ah? Ask for more sugar or sweetened milk, a little at a time. Don't blame Uncle if too jelak."
+                elif "less" in words or "siew dai" in prompt:
                     already_less = any("less sweet" in m["content"].lower() or "siew dai" in m["content"].lower()
                                        for m in messages[:-1] if m["role"] == "user")
                     advice = ("Even less sweet now ah? " if already_less else "Less sweet means siew dai, hor. ")
                     advice += ("Ask for less condensed milk" if item in {"teh tarik", "kopi", "teh"}
                                else "Ask the stall to reduce the sugar or sweetened ingredients")
                     advice += "; say how little you want. Uncle cannot read your sugar tolerance lah."
+                else:
+                    advice = "How sweet you want? Say less sweet (siew dai), no added sugar, or sweeter. Uncle not a mind reader lah."
                 return f"For your {item}: {advice}" + order_note
             if words & {"ice", "iced", "cold", "hot", "peng"}:
                 temperature = "iced (peng)" if words & {"ice", "iced", "cold", "peng"} else "hot"
