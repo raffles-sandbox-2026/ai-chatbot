@@ -3,6 +3,8 @@
 const $ = (selector) => document.querySelector(selector);
 const storageKey = "ai-chatbot.chat.v2.";
 const maxChats = 20;
+// Keep failed writes usable for this visit, even after another history action.
+const unsavedChats = new Map();
 let chats = [];
 let currentId = null;
 let busy = false;
@@ -29,7 +31,9 @@ function readChats() {
           c.title.length <= 80 && validMessages(c.messages) && c.messages.length) saved.push(c);
     } catch { /* Ignore only the damaged entry, not every saved conversation. */ }
   }
-  return saved.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  const combined = new Map(saved.map((chat) => [chat.id, chat]));
+  for (const [id, chat] of unsavedChats) combined.set(id, chat);
+  return [...combined.values()].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
 }
 
 try { chats = readChats().slice(0, maxChats); }
@@ -37,7 +41,10 @@ catch { storageWarning = "Browser storage is unavailable. Chats will last only f
 
 function save(chat, deletedId = null, existing = false) {
   try {
-    if (deletedId) localStorage.removeItem(storageKey + deletedId);
+    if (deletedId) {
+      unsavedChats.delete(deletedId);
+      localStorage.removeItem(storageKey + deletedId);
+    }
     if (chat) {
       if (existing && !localStorage.getItem(storageKey + chat.id) && !storageWarning) {
         showError("This chat was deleted in another tab. Start a new chat to continue.");
@@ -47,12 +54,14 @@ function save(chat, deletedId = null, existing = false) {
       }
       chat.updatedAt = Date.now();
       localStorage.setItem(storageKey + chat.id, JSON.stringify(chat));
+      unsavedChats.delete(chat.id);
     }
     const latest = readChats();
     for (const old of latest.slice(maxChats)) localStorage.removeItem(storageKey + old.id);
     chats = latest.slice(0, maxChats);
   }
   catch {
+    if (chat) unsavedChats.set(chat.id, chat);
     storageWarning = "Couldn't save this chat in your browser. It will last only for this visit.";
     showError(storageWarning);
   }
