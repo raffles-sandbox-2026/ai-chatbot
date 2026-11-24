@@ -113,6 +113,18 @@ def demo_reply(messages):
         kind, item = order
         order_note = note + " No real orders are placed."
         if kind == "drink":
+            # Read the requested replacement, not the temperature being replaced.
+            temperature_prompt = re.split(r"\b(?:instead of|rather than)\b", prompt)[0]
+            temp_words = set(re.findall(r"[a-z]+", temperature_prompt))
+            if re.search(r"\b(?:no|without)\s+(?:any\s+)?ice\b", temperature_prompt):
+                temperature = "No ice"
+            elif temp_words & {"hot", "warm"}:
+                temperature = "Hot"
+            elif temp_words & {"ice", "iced", "cold", "peng"}:
+                temperature = "Iced (peng)"
+            else:
+                temperature = ""
+            temperature_note = f" {temperature} for your {item}, hor." if temperature else ""
             if words & {"sugar", "sweet", "sweetness", "kosong"} or "siew dai" in prompt:
                 if "kosong" in words or re.search(r"\b(?:no|without|zero)\s+(?:any\s+|added\s+)?sugar\b", prompt):
                     advice = ("Ask for no added sugar. For milk drinks, ask about unsweetened milk too; "
@@ -128,10 +140,9 @@ def demo_reply(messages):
                     advice += "; say how little you want. Uncle cannot read your sugar tolerance lah."
                 else:
                     advice = "How sweet you want? Say less sweet (siew dai), no added sugar, or sweeter. Uncle not a mind reader lah."
-                return f"For your {item}: {advice}" + order_note
-            if words & {"ice", "iced", "cold", "hot", "peng"}:
-                temperature = "iced (peng)" if words & {"ice", "iced", "cold", "peng"} else "hot"
-                return (f"Your {item}, {temperature}. Say that at the stall, can already. "
+                return f"For your {item}: {advice}" + temperature_note + order_note
+            if temperature:
+                return (f"{temperature} for your {item}. Say that at the stall, can already. "
                         "Temperature change only — don't anyhow change the sugar order too.") + order_note
             if named_item:
                 return (f"{item.capitalize()} — {DEMO_DRINKS[item]}. Can lah. "

@@ -143,7 +143,7 @@ class ChatHTTPTests(unittest.TestCase):
     def test_drink_modifiers_and_topic_switch_do_not_repeat_generic_follow_up(self):
         messages = [{"role": "user", "content": "one kopi o please"},
                     {"role": "assistant", "content": "Kopi-o, can."}]
-        for follow, expected in (("iced please", "iced (peng)"), ("no sugar", "no added sugar"),
+        for follow, expected in (("iced please", "Iced (peng)"), ("no sugar", "no added sugar"),
                                 ("another one", "Another kopi-o"), ("my boss booked a meeting", "boss")):
             with self.subTest(follow=follow):
                 status, _, body = self.request("POST", "/api/chat", {"messages": messages + [{"role": "user", "content": follow}]})
@@ -160,6 +160,19 @@ class ChatHTTPTests(unittest.TestCase):
                 self.assertEqual(status, 200)
                 self.assertIn(expected, data["reply"])
                 self.assertIn("scripted demo", data["reply"])
+
+    def test_temperature_negation_replacement_and_combined_sweetness_requests(self):
+        for request, expected in (("no ice", "No ice"), ("hot instead of iced", "Hot"),
+                                  ("iced instead of hot", "Iced (peng)"),
+                                  ("iced, less sweet", "Iced (peng)")):
+            with self.subTest(request=request):
+                status, data = self.chat("one teh tarik, " + request)
+                self.assertEqual(status, 200)
+                self.assertIn(expected + " for your teh tarik", data["reply"])
+                if request == "no ice":
+                    self.assertNotIn("Iced (peng)", data["reply"])
+                if "less sweet" in request:
+                    self.assertIn("siew dai", data["reply"])
 
     def test_config_reports_mode_without_leaking_key(self):
         with patch.dict(os.environ, {"OPENAI_API_KEY": "test-secret-do-not-expose"}):
