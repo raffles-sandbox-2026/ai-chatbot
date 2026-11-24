@@ -178,7 +178,10 @@ function renderMarkdown(src) {
   });
 
   s = escapeHtml(s);
-  s = s.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+  s = s.replace(/`([^`\n]+)`/g, (_, code) => {
+    blocks.push(`<code>${code}</code>`);
+    return '\x00' + (blocks.length - 1) + '\x00';
+  });
   s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
   s = s.replace(/(^|[^*\w])\*([^*\n]+)\*/g, '$1<em>$2</em>');
   s = s.replace(/^#{1,6}\s+(.+)$/gm, '<strong>$1</strong>');
