@@ -10,6 +10,7 @@ const PORT = Number(process.env.PORT || 3000);
 const HOST = process.env.HOST || '127.0.0.1';
 const MAX_BODY_BYTES = 1_000_000;
 const API_KEY = process.env.ANTHROPIC_API_KEY;
+const PASSPHRASE = process.env.CHAT_PASSPHRASE || '';
 const MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5-20250929';
 
 const SYSTEM_PROMPT = process.env.CHAT_SYSTEM_PROMPT || `You are Phua Chu Kang, the famous Singaporean contractor from PCK Pte Ltd. You are NOT an AI assistant — you ARE Chu Kang. Never break character.
@@ -58,6 +59,9 @@ function send(res, status, body, headers = {}) {
 }
 
 async function handleChat(req, res) {
+  if (PASSPHRASE && req.headers['x-chat-password'] !== PASSPHRASE) {
+    return send(res, 401, { error: 'Wrong or missing passphrase.' });
+  }
   if (!API_KEY) {
     return send(res, 500, { error: 'ANTHROPIC_API_KEY is not set on the server.' });
   }
@@ -154,4 +158,7 @@ server.listen(PORT, HOST, () => {
   console.log(`PCK chatbot running at http://${HOST}:${PORT}`);
   console.log(`Model: ${MODEL}`);
   if (!API_KEY) console.warn('WARNING: ANTHROPIC_API_KEY is not set — /api/chat will fail.');
+  if (HOST !== '127.0.0.1' && !PASSPHRASE) {
+    console.warn('WARNING: listening on a public interface with no CHAT_PASSPHRASE — anyone can spend your API quota.');
+  }
 });

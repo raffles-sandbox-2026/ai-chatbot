@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: pck-chatbot
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: HOST
+        value: "0.0.0.0"
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: CHAT_PASSPHRASE
+        sync: false
