@@ -52,6 +52,7 @@ const MIME = {
 };
 
 function send(res, status, body, headers = {}) {
+  if (res.destroyed || res.writableEnded) return;
   res.writeHead(status, { 'Content-Type': 'application/json', ...headers });
   res.end(typeof body === 'string' ? body : JSON.stringify(body));
 }
@@ -81,8 +82,12 @@ async function handleChat(req, res) {
     return send(res, 400, { error: 'Expected JSON body with a non-empty "messages" array.' });
   }
 
+  const controller = new AbortController();
+  res.on('close', () => controller.abort());
+
   const upstream = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
+    signal: controller.signal,
     headers: {
       'x-api-key': API_KEY,
       'anthropic-version': '2023-06-01',
@@ -108,7 +113,7 @@ async function handleChat(req, res) {
     Connection: 'keep-alive',
   });
   upstream.body.pipeTo(new WritableStream({
-    write(chunk) { res.write(chunk); },
+    write(chunk) { if (!res.destroyed) res.write(chunk); },
     close() { res.end(); },
     abort() { res.end(); },
   })).catch(() => res.end());
