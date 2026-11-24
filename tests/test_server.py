@@ -184,6 +184,17 @@ class ChatHTTPTests(unittest.TestCase):
         self.assertIn("siew dai", data["reply"])
         self.assertNotIn("Ask for more sugar", data["reply"])
 
+    def test_money_or_numbers_are_not_discarded_when_matching_repeat_orders(self):
+        history = [{"role": "user", "content": "kopi"},
+                   {"role": "assistant", "content": "Kopi, can."}]
+        for request in ("Can I have another $5?", "another 5", "another #5"):
+            with self.subTest(request=request):
+                status, _, body = self.request("POST", "/api/chat", {
+                    "messages": history + [{"role": "user", "content": request}],
+                    "mode": "demo", "provider": "demo"})
+                self.assertEqual(status, 200)
+                self.assertNotIn("Another kopi?", json.loads(body)["reply"])
+
     def test_config_reports_mode_without_leaking_key(self):
         with patch.dict(os.environ, {"OPENAI_API_KEY": "test-secret-do-not-expose"}):
             status, _, body = self.request("GET", "/api/config")
