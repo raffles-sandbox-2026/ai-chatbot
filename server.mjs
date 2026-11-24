@@ -149,8 +149,8 @@ const server = http.createServer((req, res) => {
   });
 });
 
-server.listen(PORT, () => {
-  console.log(`PCK chatbot running at http://localhost:${PORT}`);
+server.listen(PORT, HOST, () => {
+  console.log(`PCK chatbot running at http://${HOST}:${PORT}`);
   console.log(`Model: ${MODEL}`);
   if (!API_KEY) console.warn('WARNING: ANTHROPIC_API_KEY is not set — /api/chat will fail.');
 });
