@@ -156,7 +156,8 @@ def demo_reply(messages):
                         "Don't act hero then drink everybody's water.") + order_note
             if named_item:
                 return f"{item.capitalize()}, can. {DEMO_FOOD[item]}" + order_note
-        if not named_item and re.fullmatch(r"(?:can i (?:get|have) )?(?:another|one more|two|a second)(?: one| cup| portion)?(?: please)?[.!?]*", prompt.strip()):
+        repeat_request = " ".join(re.findall(r"[a-z]+", prompt))
+        if not named_item and re.fullmatch(r"(?:(?:can|could|may) i (?:get|have) |id like )?(?:another|one more|two|a second)(?: one| cup| portion)?(?: please)?", repeat_request):
             return (f"Another {item}? Can, but tell the stall the quantity properly. "
                     "Uncle gives commentary, not free refills.") + order_note
     if roast_coffee:
