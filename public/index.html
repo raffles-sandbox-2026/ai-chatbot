@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PCK Pte Ltd — Chat with Chu Kang</title>
+<style>
+  :root {
+    --yellow: #ffd400;
+    --orange: #ff7f00;
+    --dark: #1a1a1a;
+    --cream: #fff8e1;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
+    background: var(--cream);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  header {
+    background: var(--dark);
+    color: var(--yellow);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .logo {
+    width: 44px; height: 44px;
+    background: var(--yellow);
+    color: var(--dark);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: 14px;
+    border: 3px solid var(--orange);
+    flex-shrink: 0;
+  }
+  header h1 { font-size: 18px; }
+  header .tagline { color: #bbb; font-size: 12px; font-style: italic; }
+  #chat {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .msg {
+    max-width: 75%;
+    padding: 12px 16px;
+    border-radius: 14px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+  .msg.user {
+    align-self: flex-end;
+    background: var(--orange);
+    color: #fff;
+    border-bottom-right-radius: 4px;
+  }
+  .msg.pck {
+    align-self: flex-start;
+    background: var(--dark);
+    color: var(--yellow);
+    border-bottom-left-radius: 4px;
+  }
+  .msg.pck .who, .msg.user .who {
+    display: block;
+    font-size: 10px;
+    opacity: 0.6;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+  .msg.typing { font-style: italic; opacity: 0.8; }
+  .msg.pck strong { color: #fff; }
+  .msg.pck em { color: var(--yellow); }
+  .msg code {
+    background: rgba(255,255,255,0.15);
+    padding: 1px 6px; border-radius: 4px;
+    font-family: 'SF Mono', Menlo, monospace; font-size: 88%;
+  }
+  .msg pre {
+    background: #000; border: 1px solid #444;
+    padding: 10px 12px; border-radius: 8px;
+    overflow-x: auto; margin: 8px 0;
+  }
+  .msg pre code { background: none; padding: 0; }
+  .msg ul, .msg ol { margin: 6px 0 6px 22px; }
+  .msg li { margin: 3px 0; }
+  .msg.user code { background: rgba(0,0,0,0.18); }
+  #composer {
+    display: flex;
+    gap: 10px;
+    padding: 14px 20px;
+    background: #fff;
+    border-top: 3px solid var(--yellow);
+  }
+  #input {
+    flex: 1;
+    padding: 12px 16px;
+    border: 2px solid #ddd;
+    border-radius: 24px;
+    font-size: 15px;
+    outline: none;
+  }
+  #input:focus { border-color: var(--orange); }
+  #send {
+    background: var(--orange);
+    color: #fff;
+    border: none;
+    border-radius: 24px;
+    padding: 12px 24px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  #send:disabled { opacity: 0.5; cursor: default; }
+  .err {
+    align-self: center;
+    background: #c00; color: #fff;
+    padding: 8px 14px; border-radius: 8px; font-size: 13px;
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">PCK</div>
+  <div>
+    <h1>Phua Chu Kang</h1>
+    <div class="tagline">PCK Pte Ltd — Best in Singapore, JB, and some say Batam.</div>
+  </div>
+</header>
+
+<div id="chat">
+  <div class="msg pck"><span class="who">Chu Kang</span>Oei! Chu Kang here. What you want? Renovation ah, or just come kaypoh? Ask lah, ask lah — I busy but never mind, can chat.</div>
+</div>
+
+<form id="composer">
+  <input id="input" autocomplete="off" placeholder="Ask Chu Kang something lah..." autofocus>
+  <button id="send" type="submit">Send</button>
+</form>
+
+<script>
+const chat = document.getElementById('chat');
+const input = document.getElementById('input');
+const sendBtn = document.getElementById('send');
+const history = [];
+
+function addMsg(cls, text) {
+  const div = document.createElement('div');
+  div.className = 'msg ' + cls;
+  const who = cls === 'pck' ? 'Chu Kang' : 'You';
+  div.innerHTML = `<span class="who">${who}</span>`;
+  const span = document.createElement('span');
+  span.textContent = text;
+  div.appendChild(span);
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+  return span;
+}
+
+function escapeHtml(t) {
+  return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// Minimal safe markdown renderer: escapes HTML first, then applies
+// bold/italic/code/lists/headers. Fenced code blocks are protected as
+// placeholders so their contents are never re-processed.
+function renderMarkdown(src) {
+  const blocks = [];
+  let s = src.replace(/```[^\n]*\n?([\s\S]*?)(?:```|$)/g, (_, code) => {
+    blocks.push(`<pre><code>${escapeHtml(code.replace(/\n$/, ''))}</code></pre>`);
+    return '\x00' + (blocks.length - 1) + '\x00';
+  });
+
+  s = escapeHtml(s);
+  s = s.replace(/`([^`\n]+)`/g, (_, code) => {
+    blocks.push(`<code>${code}</code>`);
+    return '\x00' + (blocks.length - 1) + '\x00';
+  });
+  s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  s = s.replace(/(^|[^*\w])\*([^*\n]+)\*/g, '$1<em>$2</em>');
+  s = s.replace(/^#{1,6}\s+(.+)$/gm, '<strong>$1</strong>');
+
+  const out = [];
+  let open = null;
+  const closeList = () => { if (open) { out.push(`</${open}>`); open = null; } };
+  for (const line of s.split('\n')) {
+    const ul = line.match(/^\s*[-*\u2022]\s+(.+)/);
+    const ol = line.match(/^\s*\d+[.)]\s+(.+)/);
+    if (ul) {
+      if (open !== 'ul') { closeList(); out.push('<ul>'); open = 'ul'; }
+      out.push('<li>' + ul[1] + '</li>');
+    } else if (ol) {
+      if (open !== 'ol') { closeList(); out.push('<ol>'); open = 'ol'; }
+      out.push('<li>' + ol[1] + '</li>');
+    } else {
+      closeList();
+      out.push(line);
+    }
+  }
+  closeList();
+
+  let html = '';
+  for (const piece of out) {
+    if (piece === '') { html += '<br>'; continue; }
+    if (/^<\/?(ul|ol|li)/.test(piece)) { html += piece; continue; }
+    html += piece + '<br>';
+  }
+  return html.replace(/\x00(\d+)\x00/g, (_, i) => blocks[+i]);
+}
+
+document.getElementById('composer').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  addMsg('user', text);
+  history.push({ role: 'user', content: text });
+
+  const reply = addMsg('pck typing', '...');
+  sendBtn.disabled = true;
+
+  // The server keeps the last 40 messages and rejects bodies over 1MB;
+  // drop oldest turns until the payload fits so long chats stay usable.
+  let toSend = history.slice(-40);
+  while (toSend.length > 2 && JSON.stringify({ messages: toSend }).length > 900_000) {
+    toSend = toSend.slice(2);
+  }
+
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: toSend }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '', full = '', completed = false;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const events = buf.split('\n\n');
+      buf = events.pop();
+      for (const ev of events) {
+        const line = ev.split('\n').find(l => l.startsWith('data:'));
+        if (!line) continue;
+        const data = line.slice(5).trim();
+        if (data === '[DONE]') continue;
+        let obj;
+        try { obj = JSON.parse(data); } catch { continue; }
+        if (obj.type === 'content_block_delta' && obj.delta?.text) {
+          full += obj.delta.text;
+          reply.textContent = full;
+          reply.parentElement.classList.remove('typing');
+          chat.scrollTop = chat.scrollHeight;
+        } else if (obj.type === 'message_stop') {
+          completed = true;
+        } else if (obj.type === 'error') {
+          throw new Error(obj.error?.message || 'stream error');
+        }
+      }
+    }
+    if (completed && full) {
+      reply.innerHTML = renderMarkdown(full);
+      chat.scrollTop = chat.scrollHeight;
+      history.push({ role: 'assistant', content: full });
+    } else {
+      reply.textContent = full
+        ? full + '\n\n(alamak, reply cut off halfway lah — ask me again!)'
+        : '(Alamak, Chu Kang\'s reply lost liao — try again?)';
+    }
+  } catch (err) {
+    reply.parentElement.classList.remove('pck', 'typing');
+    reply.parentElement.className = 'err';
+    reply.parentElement.textContent = 'Aiyah, got problem: ' + err.message;
+  } finally {
+    sendBtn.disabled = false;
+    input.focus();
+  }
+});
+</script>
+</body>
+</html>
