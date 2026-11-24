@@ -89,7 +89,7 @@ function makeMessage(role, content, pending = false) {
   item.className = `message ${role}${pending ? " pending" : ""}`;
   const name = document.createElement("div");
   name.className = "message-name";
-  name.textContent = role === "user" ? "You" : (live ? (provider === "claude" ? "Claude" : "Assistant") : "Demo assistant");
+  name.textContent = role === "user" ? "You" : (live ? "Uncle" : "Uncle · scripted demo");
   const body = document.createElement("div");
   body.className = "message-body";
   body.textContent = content;
@@ -111,7 +111,7 @@ function updateControls() {
 function render() {
   const chat = activeChat();
   $("#welcome").hidden = Boolean(chat);
-  $("#chat-title").textContent = chat?.title || "New conversation";
+  $("#chat-title").textContent = chat?.title || "A seat at Uncle’s table";
   $("#messages").replaceChildren(...(chat?.messages || []).map((m) => makeMessage(m.role, m.content)));
   $("#chat-list").replaceChildren();
   for (const saved of chats) {
@@ -150,7 +150,7 @@ async function sendMessage(event) {
   // Keep complete user/assistant pairs, with room for the next user message.
   const messages = [...chat.messages.slice(-38), { role: "user", content }];
   $("#welcome").hidden = true;
-  $("#messages").append(makeMessage("user", content), makeMessage("assistant", "Thinking…", true));
+  $("#messages").append(makeMessage("user", content), makeMessage("assistant", "Uncle is stirring his kopi…", true));
   $("#prompt").value = "";
   busy = true;
   controller = new AbortController();
@@ -237,10 +237,10 @@ async function configure() {
     ready = true;
     const service = provider === "claude" ? "Anthropic" : "OpenAI";
     const assistant = provider === "claude" ? "Claude" : "AI";
-    $("#about-button").textContent = live ? `${assistant} configured ↗` : "Demo preview ↗";
-    $("#mode-label").textContent = live ? assistant : "Demo assistant";
+    $("#about-button").textContent = live ? `${assistant} · live ↗` : "Scripted demo ↗";
+    $("#mode-label").textContent = live ? `Uncle · ${assistant}` : "Uncle · scripted demo";
     if (live) {
-      $("#welcome-note").textContent = `${assistant} configured · A fresh perspective, one message away.`;
+      $("#welcome-note").textContent = `AI character powered by ${assistant}. Strong opinions, not always good advice.`;
       $("#privacy-note").textContent = `AI can make mistakes. Messages are sent to ${service}; chat history is saved in this browser.`;
       $("#about-mode").textContent = `This server is configured for live AI replies through ${service}. AI can make mistakes; check important details.`;
     }

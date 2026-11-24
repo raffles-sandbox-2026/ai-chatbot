@@ -8,7 +8,7 @@ from http.server import ThreadingHTTPServer
 from unittest.mock import patch
 from urllib.error import HTTPError, URLError
 
-from server import ChatHandler, MAX_BODY, MAX_CONTENT, ai_reply, claude_reply, connection_config, validate_messages
+from server import ChatHandler, MAX_BODY, MAX_CONTENT, SYSTEM_PROMPT, ai_reply, claude_reply, connection_config, validate_messages
 
 
 class MessageValidationTests(unittest.TestCase):
@@ -91,6 +91,17 @@ class ChatHTTPTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertIn("brainstorm a garden", json.loads(body)["reply"])
 
+    def test_demo_starters_have_distinct_singlish_replies_and_honest_labels(self):
+        replies = []
+        for prompt, expected in (("Eight dollars for coffee", "kopi-o"), ("Work damn sian", "boss"), ("Teach me Singlish", "Can meh?")):
+            with self.subTest(prompt=prompt):
+                status, data = self.chat(prompt)
+                self.assertEqual(status, 200)
+                self.assertIn(expected, data["reply"])
+                self.assertIn("scripted demo", data["reply"])
+                replies.append(data["reply"])
+        self.assertEqual(len(set(replies)), 3)
+
     def test_config_reports_mode_without_leaking_key(self):
         with patch.dict(os.environ, {"OPENAI_API_KEY": "test-secret-do-not-expose"}):
             status, _, body = self.request("GET", "/api/config")
@@ -134,7 +145,7 @@ class ChatHTTPTests(unittest.TestCase):
             with self.subTest(path=path):
                 status, _, _ = self.request("GET", path)
                 self.assertEqual(status, 404)
-        for path in ("/", "/app.js", "/styles.css", "/favicon.svg"):
+        for path in ("/", "/app.js", "/styles.css", "/favicon.svg", "/uncle.svg"):
             with self.subTest(path=path):
                 status, headers, body = self.request("GET", path)
                 self.assertEqual(status, 200)
@@ -196,6 +207,8 @@ class OpenAIContractTests(unittest.TestCase):
         self.assertEqual(request.full_url, "https://api.openai.com/v1/responses")
         self.assertEqual(request.get_header("Authorization"), "Bearer fake-test-key")
         self.assertEqual(payload["input"], messages)
+        self.assertEqual(payload["instructions"], SYSTEM_PROMPT)
+        self.assertIn("Singlish", payload["instructions"])
         self.assertIs(payload["store"], False)
         self.assertEqual(upstream.call_args.kwargs["timeout"], 30)
 
@@ -230,6 +243,8 @@ class ClaudeContractTests(unittest.TestCase):
         self.assertEqual(request.get_header("Anthropic-version"), "2023-06-01")
         payload = json.loads(request.data)
         self.assertEqual(payload["messages"], messages)
+        self.assertEqual(payload["system"], SYSTEM_PROMPT)
+        self.assertIn("kopitiam uncle", payload["system"])
         self.assertEqual(payload["model"], "claude-haiku-4-5")
         self.assertEqual(payload["max_tokens"], 800)
 

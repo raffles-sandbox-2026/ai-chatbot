@@ -13,12 +13,23 @@ STATIC = Path(__file__).parent / "static"
 MAX_BODY = 2_000_000
 MAX_MESSAGES = 40
 MAX_CONTENT = 4_000
-SYSTEM_PROMPT = "You are a helpful assistant. Be clear, thoughtful, and concise."
+SYSTEM_PROMPT = """You are Uncle, a fictional grumpy but good-hearted Singaporean kopitiam uncle.
+Chat with the user in heavy, natural Singlish: local rhythm, clipped grammar, and phrases
+like aiyoh, alamak, walao, can or not, don't anyhow, lah, leh, lor and sia where they fit.
+Don't just append 'lah' to standard English, and don't turn every sentence into a catchphrase.
+You have strong opinions about kopi, food, work and everyday life. Be somewhat rude:
+tease the user's choices, grumble, give cheeky roasts and blunt, actually useful advice.
+Keep the warmth underneath; you are not cruel. No slurs, hateful stereotypes or threats.
+If someone is distressed or needs serious help, drop the roasting and respond with care.
+Stay conversational, usually one to three short paragraphs, and remember the recent chat.
+You are an AI character, not a real person; don't claim real-world experiences or actions.
+Answer the actual question rather than repeating a fixed introduction or advertising the app."""
 ASSETS = {
     "/": ("index.html", "text/html; charset=utf-8"),
     "/app.js": ("app.js", "text/javascript; charset=utf-8"),
     "/styles.css": ("styles.css", "text/css; charset=utf-8"),
     "/favicon.svg": ("favicon.svg", "image/svg+xml"),
+    "/uncle.svg": ("uncle.svg", "image/svg+xml"),
 }
 
 
@@ -55,49 +66,40 @@ def validate_messages(payload):
 def demo_reply(messages):
     """Scripted responses exercise the interface without an API key or AI claims."""
     prompt = messages[-1]["content"].lower()
+    note = "\n\nThis is a scripted demo, not a live AI reply."
     if len(messages) > 1:
         first = messages[0]["content"][:180]
         return (
-            f'We started with: “{first}”. Your follow-up stays in this conversation.\n\n'
-            "This preview uses scripted replies, so I can't reason about that follow-up yet. "
-            "With an AI connection, the assistant receives this conversation's recent messages "
-            "and can build on your earlier ideas."
-        )
-    if "brainstorm" in prompt or "idea" in prompt:
+            f'Aiyoh, just now you say “{first}”, now got follow-up already ah? '
+            "Uncle got listen lah.\n\nBut this demo only got fixed lines — cannot actually "
+            "think about your follow-up yet. Connect the AI, then we properly lim kopi and talk."
+        ) + note
+    if any(word in prompt for word in ("kopi", "coffee", "lunch", "food", "eat")):
         return (
-            "Here's a starting point for your next project:\n\n"
-            "1. A reading companion that turns notes into questions.\n"
-            "2. A meal planner built around what's in your fridge.\n"
-            "3. A focused assistant for your team's frequently asked questions.\n\n"
-            "Start with one person, one problem, and one useful conversation. "
-            "What would you like to explore?\n\n"
-            "This is a scripted demo response, not an AI-generated answer."
-        )
-    if "explain" in prompt or "learn" in prompt:
+            "Eight-dollar kopi? Wah, inside got gold bar is it? Uncle hear already also heart pain.\n\n"
+            "Go downstairs, order kopi-o kosong if you want black, no sugar. Add kaya toast "
+            "and soft-boiled eggs, settle. Your wallet also can breathe a bit lah."
+        ) + note
+    if any(word in prompt for word in ("work", "boss", "sian", "meeting", "job")):
         return (
-            "A good way to learn something new is to break it into three parts:\n\n"
-            "• The idea: explain it in one plain sentence.\n"
-            "• An example: connect it to something you already know.\n"
-            "• A check: try explaining it back without your notes.\n\n"
-            "Try a follow-up to see how conversations work. This is a scripted demo; "
-            "connect an AI model for answers tailored to your question."
-        )
-    if "write" in prompt or "draft" in prompt:
+            "Another meeting? Your boss collecting meetings like loyalty points ah?\n\n"
+            "Ask one thing first: what decision we making? If nobody can answer, "
+            "ask whether a short message can settle it. Don't quietly suffer then "
+            "complain to your kopi lah. Kopi cannot approve your leave."
+        ) + note
+    if any(word in prompt for word in ("singlish", "shiok", "lah", "teach", "explain")):
         return (
-            "Here's a simple template to get you started:\n\n"
-            "Hi [name],\n\nI'm reaching out about [topic]. "
-            "The main thing I'd love your input on is [question]. "
-            "Would [next step] work for you?\n\nThanks,\n[your name]\n\n"
-            "This is a scripted demo template. An AI connection will let you tailor "
-            "the tone, details, and format to your request."
-        )
+            "Singlish not just English then sprinkle 'lah' like pepper, hor. Got rhythm one.\n\n"
+            "'Can' means yes. 'Can or not?' means possible? 'Can lah' means can, "
+            "don't worry so much. 'Can meh?' means Uncle got doubts about your grand plan.\n\n"
+            "See? One word, so many jobs. More hardworking than some people."
+        ) + note
     return (
-        "Hello! This is your chatbot's first home. You can send messages, try a follow-up, "
-        "and start a fresh conversation from the sidebar.\n\n"
-        "I'm running in demo mode with scripted replies, not a live AI model. "
-        "To get real answers, the server owner can connect a Claude or OpenAI API key. "
-        "In the meantime, try one of the starter prompts to explore the experience."
-    )
+        "Eh, come sit lah. Stand there for what, you blocking the fan.\n\n"
+        "Uncle got kopi, strong opinions, and absolutely no customer-service training. "
+        "Want complain about work, talk makan, or learn some Singlish? Faster ask. "
+        "Kopi getting cold already."
+    ) + note
 
 
 def ai_reply(messages, api_key):

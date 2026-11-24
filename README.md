@@ -1,4 +1,10 @@
-# AI chatbot
+# Uncle Says
+
+A heavy-Singlish, slightly rude kopitiam uncle to lim kopi with. Expect cheeky roasts,
+blunt but useful advice, and a warm coffee-shop interface. Uncle is a fictional AI
+character; both live providers receive the same server-owned persona instructions.
+Without a key, the clearly labelled scripted demo has fixed food, work and Singlish
+responses and a contextual follow-up template — it is not an AI model.
 
 A small, dependency-free chatbot starter: a responsive chat page, local conversation history, and a Python server with optional Claude and OpenAI connections.
 
@@ -45,6 +51,12 @@ Messages render as plain text, not HTML or Markdown, so untrusted content cannot
 ```sh
 python3 -m unittest discover -s tests -v
 python3 -m compileall -q server.py tests
+```
+
+Browser-history regression tests additionally use Node.js 24 (test tooling only):
+
+```sh
+node --test tests/test_history.cjs
 ```
 
 GitHub Actions runs these checks on pull requests and pushes to main. No pre-commit hooks are configured.

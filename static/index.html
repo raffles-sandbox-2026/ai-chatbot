@@ -3,8 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#fcfcfc">
-  <title>Chat — A little space for big ideas</title>
+  <meta name="theme-color" content="#214d3e">
+  <meta name="description" content="Lim kopi with a grumpy Singlish-speaking uncle. Kopi hot. Takes hotter.">
+  <title>Uncle Says — Kopi hot. Takes hotter.</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/styles.css">
   <script src="/app.js" defer></script>
@@ -13,28 +14,35 @@
   <a class="skip-link" href="#prompt">Skip to message</a>
   <div class="app-shell">
     <aside class="sidebar" aria-label="Conversations">
-      <a class="brand" href="/" aria-label="Chat home"><span class="brand-icon" aria-hidden="true">▱</span> Chat<span class="brand-note">/ sandbox</span></a>
-      <button id="new-chat" class="new-chat"><span aria-hidden="true">＋</span> New chat <span class="new-arrow" aria-hidden="true">↗</span></button>
-      <div class="section-label">Your conversations</div>
+      <a class="brand" href="/" aria-label="Uncle Says home"><img class="brand-icon" src="/favicon.svg" alt=""><span>Uncle Says<small>KOPITIAM CHAT CLUB</small></span></a>
+      <button id="new-chat" class="new-chat"><span aria-hidden="true">＋</span> New kopi session <span class="new-arrow" aria-hidden="true">↗</span></button>
+      <div class="section-label">Previously, at this table</div>
       <nav id="chat-list" aria-label="Chat history"></nav>
-      <p id="history-empty" class="history-empty">A fresh start.<br>Your conversations will appear here.</p>
-      <div class="sidebar-bottom"><span class="local-dot" aria-hidden="true"></span><div>Just on this browser<small>Your chats are saved locally.</small></div></div>
+      <p id="history-empty" class="history-empty">No gossip yet.<br>Don’t shy. Say something lah.</p>
+      <div class="sidebar-quote"><span aria-hidden="true">“</span>Kopi can be sweet.<br>Uncle, not so much.<small>OPEN WHENEVER YOU ARE</small></div>
+      <div class="sidebar-bottom"><span class="local-dot" aria-hidden="true"></span><div>Your usual corner<small>Chats saved on this browser only.</small></div></div>
     </aside>
 
     <main>
-      <header class="topbar"><div class="workspace-name">Your workspace <span aria-hidden="true">/</span> <span id="chat-title">New conversation</span></div><div class="top-actions"><button id="clear-chat" class="text-button" disabled>Delete chat</button><button id="about-button" class="mode-button">Connecting…</button></div></header>
+      <header class="topbar"><div class="workspace-name"><span class="table-label">TABLE 01</span><span id="chat-title">A seat at Uncle’s table</span></div><div class="top-actions"><button id="clear-chat" class="text-button" disabled>Delete chat</button><button id="about-button" class="mode-button">Connecting…</button></div></header>
 
       <div id="conversation-scroll" class="conversation-scroll">
         <section id="welcome" class="welcome" aria-labelledby="welcome-title">
-          <div class="eyebrow"><span class="little-star" aria-hidden="true">✳</span> A little space for big ideas</div>
-          <h1 id="welcome-title">What’s on your mind?</h1>
-          <p class="welcome-copy">A question, a rough idea, a blank page.<br>Let’s make something of it.</p>
-          <div class="suggestions">
-            <button class="suggestion" data-prompt="Brainstorm three ideas for a small weekend project."><span class="suggestion-icon" aria-hidden="true">✧</span><strong>Find a spark</strong><span>Brainstorm my next project</span><span class="card-arrow" aria-hidden="true">↗</span></button>
-            <button class="suggestion" data-prompt="Help me write a friendly email asking a teammate for feedback."><span class="suggestion-icon" aria-hidden="true">✎</span><strong>Find the words</strong><span>Draft something thoughtful</span><span class="card-arrow" aria-hidden="true">↗</span></button>
-            <button class="suggestion" data-prompt="Explain a simple approach to learning something new."><span class="suggestion-icon" aria-hidden="true">◎</span><strong>Make it click</strong><span>Learn something new</span><span class="card-arrow" aria-hidden="true">↗</span></button>
+          <div class="hero">
+            <div class="hero-copy"><div class="eyebrow"><span class="little-star" aria-hidden="true"></span> KOPI HOT. TAKES HOTTER.</div>
+              <h1 id="welcome-title">Come, sit.<br>What you <em>want?</em></h1>
+              <p class="welcome-copy">One grumpy uncle. Zero sugar-coating.<br>Tell him your problems. He’ll probably complain too.</p>
+              <div class="character-tags"><span>Extra gao Singlish</span><span>Mildly rude, mostly right*</span></div>
+            </div>
+            <figure class="uncle-portrait"><img src="/uncle.svg" alt="An illustrated kopitiam uncle with glasses, a singlet and a kopi cup"><figcaption>UNSOLICITED ADVICE <span>Free. Kopi not included.</span></figcaption></figure>
           </div>
-          <p class="demo-note" id="welcome-note">Demo preview · Scripted replies, no AI connection yet.</p>
+          <div class="menu-heading"><span>DON’T KNOW WHAT TO SAY?</span><span>TRY TODAY’S SPECIALS</span></div>
+          <div class="suggestions">
+            <button class="suggestion" data-prompt="Uncle, I spent eight dollars on coffee. Roast my life choices."><span class="suggestion-icon" aria-hidden="true">01 / MAKAN</span><strong>Eight-dollar kopi?!</strong><span>Let Uncle judge my order</span><span class="card-arrow" aria-hidden="true">↗</span></button>
+            <button class="suggestion" data-prompt="Uncle, work damn sian. My boss booked another meeting that could be an email."><span class="suggestion-icon" aria-hidden="true">02 / COMPLAIN</span><strong>Work damn sian.</strong><span>My boss needs to hear this</span><span class="card-arrow" aria-hidden="true">↗</span></button>
+            <button class="suggestion" data-prompt="Uncle, teach me proper Singlish. How do I use can, can lah, and can meh?"><span class="suggestion-icon" aria-hidden="true">03 / TALK COCK</span><strong>Can or not, Uncle?</strong><span>A crash course in Singlish</span><span class="card-arrow" aria-hidden="true">↗</span></button>
+          </div>
+          <p class="demo-note" id="welcome-note">Scripted demo · Uncle has a few fixed lines, not a live AI connection yet.</p>
         </section>
         <section id="messages" class="messages" role="log" aria-label="Conversation" aria-live="polite" aria-relevant="additions text"></section>
       </div>
@@ -43,14 +51,14 @@
         <div id="error" class="error" role="alert" hidden></div>
         <form id="chat-form" class="composer">
           <label class="sr-only" for="prompt">Your message</label>
-          <textarea id="prompt" name="message" rows="2" maxlength="4000" placeholder="Ask anything, or start with an idea…" required></textarea>
+          <textarea id="prompt" name="message" rows="2" maxlength="4000" placeholder="Eh Uncle, I got something to ask…" required></textarea>
           <div class="composer-bottom"><span id="composer-status"><span class="status-dot" aria-hidden="true"></span> <span id="mode-label">Connecting</span></span><div class="composer-controls"><span class="keyboard-hint">Enter to send <span aria-hidden="true">↵</span></span><button id="send" class="send-button" type="submit" aria-label="Send message" disabled>↑</button></div></div>
         </form>
-        <p class="composer-caption" id="privacy-note">Demo replies are scripted. Chats stay in this browser. <button class="inline-button" id="details-button">About this preview</button></p>
+        <p class="composer-caption" id="privacy-note">*Fictional uncle. Real attitude. Demo replies are scripted. <button class="inline-button" id="details-button">About this kopitiam</button></p>
       </div>
     </main>
   </div>
 
-  <dialog id="about-dialog" aria-labelledby="about-title"><div class="dialog-heading"><h2 id="about-title">A starting point for your chatbot</h2><button id="close-about" class="text-button" aria-label="Close about dialog">✕</button></div><p id="about-mode">This preview uses scripted demo replies. It isn't connected to an AI model.</p><p>Your conversations are saved only in this browser. Delete a chat to remove its saved history.</p><p>To enable real AI replies, the server owner can set <code>ANTHROPIC_API_KEY</code> for Claude or <code>OPENAI_API_KEY</code> and restart the server. With AI enabled, the recent conversation is sent to the configured provider to generate a reply.</p><a class="repo-link" href="https://github.com/raffles-sandbox-2026/ai-chatbot" target="_blank" rel="noopener noreferrer">View the project on GitHub ↗</a></dialog>
+  <dialog id="about-dialog" aria-labelledby="about-title"><div class="dialog-heading"><h2 id="about-title">Meet Uncle.</h2><button id="close-about" class="text-button" aria-label="Close about dialog">✕</button></div><p>Heavy Singlish. Strong kopi. A bit rude, but got heart. Uncle is a fictional AI character, not a real person or a source of professional advice.</p><p id="about-mode">This preview uses scripted demo replies. It isn’t connected to an AI model.</p><p>Your conversations are saved only in this browser. Delete a chat to remove its saved history.</p><p>For live replies, the server owner can configure Claude or OpenAI. Recent conversation history is then sent to the displayed provider.</p><a class="repo-link" href="https://github.com/raffles-sandbox-2026/ai-chatbot" target="_blank" rel="noopener noreferrer">View the project on GitHub ↗</a></dialog>
 </body>
 </html>
