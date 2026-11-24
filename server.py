@@ -10,7 +10,8 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 STATIC = Path(__file__).parent / "static"
-MAX_BODY = 180_000
+# Covers 40 × 4,000 codepoints even with JSON's surrogate-pair escaping.
+MAX_BODY = 2_000_000
 MAX_MESSAGES = 40
 MAX_CONTENT = 4_000
 SYSTEM_PROMPT = "You are a helpful assistant. Be clear, thoughtful, and concise."

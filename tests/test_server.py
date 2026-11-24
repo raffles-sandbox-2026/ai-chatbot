@@ -8,7 +8,7 @@ from http.server import ThreadingHTTPServer
 from unittest.mock import patch
 from urllib.error import HTTPError, URLError
 
-from server import ChatHandler, MAX_CONTENT, ai_reply, validate_messages
+from server import ChatHandler, MAX_BODY, MAX_CONTENT, ai_reply, validate_messages
 
 
 class MessageValidationTests(unittest.TestCase):
@@ -130,8 +130,14 @@ class ChatHTTPTests(unittest.TestCase):
         self.assertEqual(status, 415)
 
     def test_rejects_excessive_body_before_reading_it(self):
-        status, _, _ = self.request("POST", "/api/chat", raw="x" * 180_001)
+        status, _, _ = self.request("POST", "/api/chat", raw="x" * (MAX_BODY + 1))
         self.assertEqual(status, 413)
+
+    def test_largest_valid_multilingual_conversation_fits_body_limit(self):
+        messages = [{"role": "user" if i % 2 == 0 else "assistant", "content": "😀" * MAX_CONTENT} for i in range(39)]
+        self.assertGreater(len(json.dumps({"messages": messages})), 180_000)
+        status, _, _ = self.request("POST", "/api/chat", {"messages": messages})
+        self.assertEqual(status, 200)
 
     def test_rejects_invalid_role_and_unknown_routes(self):
         status, _, _ = self.request("POST", "/api/chat", {"messages": [{"role": "system", "content": "hey"}]})
