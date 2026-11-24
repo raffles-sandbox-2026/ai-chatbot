@@ -232,12 +232,25 @@ document.getElementById('composer').addEventListener('submit', async (e) => {
     toSend = toSend.slice(2);
   }
 
+  // When the server sets CHAT_PASSPHRASE, we keep it in localStorage and
+  // send it on every request; a 401 re-prompts and retries once.
   try {
-    const res = await fetch('/api/chat', {
+    const callChat = () => fetch('/api/chat', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Chat-Password': localStorage.getItem('pck_pass') || '',
+      },
       body: JSON.stringify({ messages: toSend }),
     });
+    let res = await callChat();
+    if (res.status === 401) {
+      const p = prompt('Chu Kang ask: what the passphrase?');
+      if (p !== null) {
+        localStorage.setItem('pck_pass', p);
+        res = await callChat();
+      }
+    }
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || `HTTP ${res.status}`);
