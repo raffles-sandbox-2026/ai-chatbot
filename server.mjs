@@ -7,6 +7,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
 const PORT = Number(process.env.PORT || 3000);
+const HOST = process.env.HOST || '127.0.0.1';
+const MAX_BODY_BYTES = 1_000_000;
 const API_KEY = process.env.ANTHROPIC_API_KEY;
 const MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5-20250929';
 
@@ -59,8 +61,17 @@ async function handleChat(req, res) {
     return send(res, 500, { error: 'ANTHROPIC_API_KEY is not set on the server.' });
   }
 
-  let body = '';
-  for await (const chunk of req) body += chunk;
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of req) {
+    size += chunk.length;
+    if (size > MAX_BODY_BYTES) {
+      req.destroy();
+      return send(res, 413, { error: 'Request body too large.' });
+    }
+    chunks.push(chunk);
+  }
+  const body = Buffer.concat(chunks).toString('utf8');
 
   let messages;
   try {
