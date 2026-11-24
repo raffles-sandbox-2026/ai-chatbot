@@ -178,6 +178,13 @@ class OpenAIContractTests(unittest.TestCase):
         with patch("server.urlopen", return_value=io.BytesIO(b'{"output": []}')), self.assertRaises(ValueError):
             ai_reply([{"role": "user", "content": "Hi"}], "fake-test-key")
 
+    def test_unicode_reply_is_capped_in_codepoints_and_can_be_sent_back(self):
+        result = {"output": [{"type": "message", "content": [{"type": "output_text", "text": "😀" * 5000}]}]}
+        with patch("server.urlopen", return_value=io.BytesIO(json.dumps(result).encode())):
+            reply = ai_reply([{"role": "user", "content": "Hi"}], "fake-test-key")
+        self.assertEqual(len(reply), MAX_CONTENT)
+        validate_messages({"messages": [{"role": "user", "content": "Hi"}, {"role": "assistant", "content": reply}, {"role": "user", "content": "Again"}]})
+
 
 if __name__ == "__main__":
     unittest.main()

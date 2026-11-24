@@ -14,7 +14,7 @@ let storageWarning = "";
 function validMessages(messages) {
   return Array.isArray(messages) && messages.length <= 40 && messages.length % 2 === 0 &&
     messages.every((m, i) => m && m.role === (i % 2 ? "assistant" : "user") &&
-      typeof m.content === "string" && m.content.trim().length > 0 && m.content.length <= 4000);
+      typeof m.content === "string" && m.content.trim().length > 0 && Array.from(m.content).length <= 4000);
 }
 
 function readChats() {
