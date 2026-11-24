@@ -20,7 +20,7 @@ function validMessages(messages) {
       typeof m.content === "string" && m.content.trim().length > 0 && Array.from(m.content).length <= 4000);
 }
 
-function readChats() {
+function readChats(includeUnsaved = true) {
   const saved = [];
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
@@ -32,7 +32,11 @@ function readChats() {
     } catch { /* Ignore only the damaged entry, not every saved conversation. */ }
   }
   const combined = new Map(saved.map((chat) => [chat.id, chat]));
-  for (const [id, chat] of unsavedChats) combined.set(id, chat);
+  if (includeUnsaved) for (const [id, entry] of unsavedChats) {
+    // A failed update is not permission to resurrect another tab's deletion.
+    if (entry.wasPersisted && !combined.has(id)) unsavedChats.delete(id);
+    else combined.set(id, entry.chat);
+  }
   return [...combined.values()].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
 }
 
@@ -40,13 +44,18 @@ try { chats = readChats().slice(0, maxChats); }
 catch { storageWarning = "Browser storage is unavailable. Chats will last only for this visit."; }
 
 function save(chat, deletedId = null, existing = false) {
+  let wasPersisted = chat ? (unsavedChats.get(chat.id)?.wasPersisted || false) : false;
   try {
     if (deletedId) {
       unsavedChats.delete(deletedId);
       localStorage.removeItem(storageKey + deletedId);
     }
     if (chat) {
-      if (existing && !localStorage.getItem(storageKey + chat.id) && !storageWarning) {
+      const stored = localStorage.getItem(storageKey + chat.id);
+      const memoryOnly = unsavedChats.has(chat.id) && !unsavedChats.get(chat.id).wasPersisted;
+      wasPersisted = wasPersisted || stored !== null;
+      if (existing && stored === null && !memoryOnly) {
+        unsavedChats.delete(chat.id);
         showError("This chat was deleted in another tab. Start a new chat to continue.");
         currentId = null;
         chats = readChats().slice(0, maxChats);
@@ -54,7 +63,7 @@ function save(chat, deletedId = null, existing = false) {
       }
       chat.updatedAt = Date.now();
       // Make room for the newest 20 before writing; restore evictions if it fails.
-      const evicted = readChats().filter((c) => c.id !== chat.id).slice(maxChats - 1);
+      const evicted = readChats(false).filter((c) => c.id !== chat.id).slice(maxChats - 1);
       const backups = evicted.map((c) => [storageKey + c.id, localStorage.getItem(storageKey + c.id)]);
       for (const [key] of backups) localStorage.removeItem(key);
       try {
@@ -66,12 +75,11 @@ function save(chat, deletedId = null, existing = false) {
       unsavedChats.delete(chat.id);
       for (const old of evicted) unsavedChats.delete(old.id);
     }
-    const latest = readChats();
-    for (const old of latest.slice(maxChats)) localStorage.removeItem(storageKey + old.id);
-    chats = latest.slice(0, maxChats);
+    for (const old of readChats(false).slice(maxChats)) localStorage.removeItem(storageKey + old.id);
+    chats = readChats().slice(0, maxChats);
   }
   catch {
-    if (chat) unsavedChats.set(chat.id, chat);
+    if (chat) unsavedChats.set(chat.id, { chat, wasPersisted });
     storageWarning = "Couldn't save this chat in your browser. It will last only for this visit.";
     showError(storageWarning);
   }

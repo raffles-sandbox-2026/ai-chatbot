@@ -63,3 +63,24 @@ test('an oversized replacement does not erase the oldest persisted chat', () => 
   assert.equal(store.values.size, 20);
   assert.ok(store.run(`readChats().some(c => c.id === 'new')`));
 });
+
+test('a memory-only chat does not evict persisted history when updating another chat', () => {
+  const initial = Array.from({ length: 20 }, (_, i) => ({ ...chat('c' + String(i).padStart(2, '0')), updatedAt: i }));
+  const quota = initial.reduce((total, c) => total + JSON.stringify(c).length, 0) + 30;
+  const store = historyStore(initial, quota);
+  store.run(`save(${JSON.stringify(chat('new', 'x'.repeat(4000)))});`);
+  store.run(`save(${JSON.stringify(chat('c19'))}, null, true);`);
+  assert.equal(store.values.size, 20);
+  assert.ok(store.values.has('ai-chatbot.chat.v2.c00'));
+  assert.ok(store.run(`readChats().some(c => c.id === 'new')`));
+});
+
+test('another-tab deletion wins over a quota-failed update', () => {
+  const store = historyStore([chat('edited')], 1);
+  store.run(`const edited = ${JSON.stringify(chat('edited', 'new reply'))}; save(edited, null, true);`);
+  store.values.delete('ai-chatbot.chat.v2.edited');
+  assert.ok(!store.run(`readChats().some(c => c.id === 'edited')`));
+  store.run(`save(edited, null, true);`);
+  assert.ok(!store.values.has('ai-chatbot.chat.v2.edited'));
+  assert.ok(!store.run(`readChats().some(c => c.id === 'edited')`));
+});
