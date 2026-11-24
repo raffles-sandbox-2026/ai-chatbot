@@ -43,7 +43,7 @@ The server uses the [Claude Messages API](https://platform.claude.com/docs/en/ap
 - Try starter prompts, stop a pending response, and retry an unsuccessful message.
 - Start, revisit, and delete conversations. The last 20 chats are kept in browser local storage, with up to 40 recent messages per chat.
 - Switch to live Claude or OpenAI by configuring the server. This is request/response chat, not token streaming. Stopping a reply cancels the browser request, not an already-started provider generation.
-- Use keyboard navigation and a responsive layout. On small screens, New chat and Delete chat remain available; the saved-history sidebar is desktop-only.
+- Use keyboard navigation and a responsive layout. On phones, History opens saved chats; selecting one focuses the composer. About keeps keyboard focus inside the dialog and returns it to its opener when closed.
 
 Messages render as plain text, not HTML or Markdown, so untrusted content cannot inject markup. There is no server-side chat database, file upload, account system, or telemetry. Browser storage is not encrypted; don't use shared browsers for sensitive chats. Demo messages aren't sent to any external service.
 
@@ -68,6 +68,6 @@ GitHub Actions runs these checks on pull requests and pushes to main. No pre-com
 - `static/`: vanilla HTML, CSS, and JavaScript. No Node.js toolchain or third-party runtime dependencies.
 - `tests/`: HTTP integration and mocked upstream tests; no paid API calls.
 
-This first version uses a quiet workbench layout and neutral/blue fallback design tokens; the blank repository had no existing brand assets or design system. Keep this branch unmerged to preserve the blank main branch until you're ready.
+This first version uses a cream/green kopitiam layout and an original uncle illustration; the blank repository had no existing brand assets or design system. Keep this branch unmerged to preserve the blank main branch until you're ready.
 
 The Python standard-library HTTP server is intended for local development and an access-controlled preview. Before a public deployment, use a production server and add authentication, abuse/rate controls, and a deliberate data-retention policy.
