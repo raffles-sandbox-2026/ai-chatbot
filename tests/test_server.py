@@ -108,6 +108,48 @@ class ChatHTTPTests(unittest.TestCase):
         self.assertIn("Can meh?", data["reply"])
         self.assertNotIn("kopi-o", data["reply"])
 
+    def test_ordinary_drink_order_and_sweetness_follow_up_are_distinct(self):
+        order = "one teh tarik, less sweet please"
+        status, first = self.chat(order)
+        self.assertEqual(status, 200)
+        self.assertIn("teh tarik", first["reply"])
+        self.assertIn("siew dai", first["reply"])
+        messages = [{"role": "user", "content": order}, {"role": "assistant", "content": first["reply"]},
+                    {"role": "user", "content": "make it less sweet"}]
+        status, _, body = self.request("POST", "/api/chat", {"messages": messages})
+        follow = json.loads(body)["reply"]
+        self.assertEqual(status, 200)
+        self.assertIn("teh tarik", follow)
+        self.assertIn("Even less sweet", follow)
+        self.assertNotEqual(first["reply"], follow)
+        self.assertIn("scripted demo", follow)
+        self.assertIn("No real orders", follow)
+
+    def test_food_order_and_spice_follow_up_stay_on_the_food(self):
+        status, first = self.chat("One roti prata please")
+        self.assertEqual(status, 200)
+        self.assertIn("prata", first["reply"])
+        messages = [{"role": "user", "content": "One roti prata please"},
+                    {"role": "assistant", "content": first["reply"]},
+                    {"role": "user", "content": "less spicy please"}]
+        status, _, body = self.request("POST", "/api/chat", {"messages": messages})
+        follow = json.loads(body)["reply"]
+        self.assertEqual(status, 200)
+        self.assertIn("roti prata", follow)
+        self.assertIn("on the side", follow)
+        self.assertNotEqual(first["reply"], follow)
+        self.assertIn("scripted demo", follow)
+
+    def test_drink_modifiers_and_topic_switch_do_not_repeat_generic_follow_up(self):
+        messages = [{"role": "user", "content": "one kopi o please"},
+                    {"role": "assistant", "content": "Kopi-o, can."}]
+        for follow, expected in (("iced please", "iced (peng)"), ("no sugar", "no added sugar"),
+                                ("another one", "Another kopi-o"), ("my boss booked a meeting", "boss")):
+            with self.subTest(follow=follow):
+                status, _, body = self.request("POST", "/api/chat", {"messages": messages + [{"role": "user", "content": follow}]})
+                self.assertEqual(status, 200)
+                self.assertIn(expected, json.loads(body)["reply"])
+
     def test_config_reports_mode_without_leaking_key(self):
         with patch.dict(os.environ, {"OPENAI_API_KEY": "test-secret-do-not-expose"}):
             status, _, body = self.request("GET", "/api/config")

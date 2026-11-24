@@ -64,18 +64,86 @@ def validate_messages(payload):
     return clean
 
 
+DEMO_DRINKS = {
+    "teh tarik": "pulled milk tea",
+    "kopi-o": "black coffee with sugar",
+    "kopi-c": "coffee with evaporated milk and sugar",
+    "teh-o": "tea without milk, with sugar",
+    "teh-c": "tea with evaporated milk and sugar",
+    "kopi": "coffee with condensed milk",
+    "teh": "tea with condensed milk",
+    "milo": "a chocolate malt drink",
+    "bandung": "rose-syrup milk",
+    "coffee": "a kopi break",
+    "tea": "a tea break",
+}
+DEMO_FOOD = {
+    "kaya toast": "Crispy toast, kaya and butter. Add soft-boiled eggs, breakfast settle.",
+    "roti prata": "Crispy prata and curry. Eat while hot, not after your photo shoot lah.",
+    "chicken rice": "Fragrant rice, chicken and chilli on the side. Simple, no need overthink.",
+    "nasi lemak": "Coconut rice, sambal and the usual sides. Ask the stall what comes with it.",
+    "laksa": "Spicy coconut broth and noodles. Wear white shirt then regret, hor.",
+    "mee goreng": "Fried noodles, hot from the wok. Ask about the chilli before acting hero.",
+    "prata": "Prata and curry. Eat while hot, not after your photo shoot lah.",
+    "toast": "Toast first, gossip later. Cold toast not worth arguing over.",
+}
+
+
+def demo_item(text):
+    """Recognize a small explicit demo menu, not arbitrary intent or real orders."""
+    for kind, menu in (("drink", DEMO_DRINKS), ("food", DEMO_FOOD)):
+        for item in menu:
+            pattern = r"\b" + re.escape(item).replace(r"\-", "[- ]").replace(r"\ ", r"\s+") + r"\b"
+            if re.search(pattern, text, re.I):
+                return kind, item
+    return None
+
+
 def demo_reply(messages):
     """Scripted responses exercise the interface without an API key or AI claims."""
-    words = set(re.findall(r"[a-z]+", messages[-1]["content"].lower()))
+    prompt = messages[-1]["content"].lower()
+    words = set(re.findall(r"[a-z]+", prompt))
     note = "\n\nThis is a scripted demo, not a live AI reply."
-    if len(messages) > 1:
-        first = messages[0]["content"][:180]
-        return (
-            f'Aiyoh, just now you say “{first}”, now got follow-up already ah? '
-            "Uncle got listen lah.\n\nBut this demo only got fixed lines — cannot actually "
-            "think about your follow-up yet. Connect the AI, then we properly lim kopi and talk."
-        ) + note
-    if words & {"kopi", "coffee", "lunch", "food", "eat"}:
+    named_item = demo_item(prompt)
+    previous_item = next((item for m in reversed(messages[:-1]) if m["role"] == "user"
+                          and (item := demo_item(m["content"]))), None)
+    order = named_item or previous_item
+    roast_coffee = bool(words & {"kopi", "coffee"} and words & {"roast", "dollar", "dollars", "expensive"})
+    if order and not roast_coffee:
+        kind, item = order
+        order_note = note + " No real orders are placed."
+        if kind == "drink":
+            if words & {"sugar", "sweet", "sweetness", "kosong"} or "siew dai" in prompt:
+                if "kosong" in words or "no sugar" in prompt or "without sugar" in prompt:
+                    advice = ("Ask for no added sugar. For milk drinks, ask about unsweetened milk too; "
+                              "condensed milk, Milo powder and syrups can already contain sugar.")
+                else:
+                    already_less = any("less sweet" in m["content"].lower() or "siew dai" in m["content"].lower()
+                                       for m in messages[:-1] if m["role"] == "user")
+                    advice = ("Even less sweet now ah? " if already_less else "Less sweet means siew dai, hor. ")
+                    advice += ("Ask for less condensed milk" if item in {"teh tarik", "kopi", "teh"}
+                               else "Ask the stall to reduce the sugar or sweetened ingredients")
+                    advice += "; say how little you want. Uncle cannot read your sugar tolerance lah."
+                return f"For your {item}: {advice}" + order_note
+            if words & {"ice", "iced", "cold", "hot", "peng"}:
+                temperature = "iced (peng)" if words & {"ice", "iced", "cold", "peng"} else "hot"
+                return (f"Your {item}, {temperature}. Say that at the stall, can already. "
+                        "Temperature change only — don't anyhow change the sugar order too.") + order_note
+            if named_item:
+                return (f"{item.capitalize()} — {DEMO_DRINKS[item]}. Can lah. "
+                        "Tell the stall if you want less sweet or iced. "
+                        "Order one drink also need committee meeting is it?") + order_note
+        else:
+            if words & {"spicy", "chilli", "chili", "sambal"}:
+                return (f"For your {item}, ask for chilli or sambal on the side, less spicy if possible. "
+                        "Some curry and broth already spicy before you add anything, hor. "
+                        "Don't act hero then drink everybody's water.") + order_note
+            if named_item:
+                return f"{item.capitalize()}, can. {DEMO_FOOD[item]}" + order_note
+        if not named_item and words & {"another", "more", "two", "second"}:
+            return (f"Another {item}? Can, but tell the stall the quantity properly. "
+                    "Uncle gives commentary, not free refills.") + order_note
+    if roast_coffee:
         return (
             "Eight-dollar kopi? Wah, inside got gold bar is it? Uncle hear already also heart pain.\n\n"
             "Go downstairs, order kopi-o kosong if you want black, no sugar. Add kaya toast "
@@ -95,6 +163,20 @@ def demo_reply(messages):
             "don't worry so much. 'Can meh?' means Uncle got doubts about your grand plan.\n\n"
             "See? One word, so many jobs. More hardworking than some people."
         ) + note
+    if words & {"lunch", "food", "eat", "makan"}:
+        return ("Hungry then go makan lah, don't stare at the menu until dinner. "
+                "Kaya toast for a light bite, chicken rice if you want a meal. "
+                "Tell Uncle which one — at least this argument got a useful ending.") + note
+    if previous_item:
+        kind, item = previous_item
+        options = "less sweet, no added sugar, hot or iced" if kind == "drink" else "chilli on the side or another portion"
+        return (f"Still on your {item}, hor. In this little demo, try asking for {options}. "
+                "Other questions need the live AI connection — Uncle won't pretend to understand everything.") + note
+    if len(messages) > 1:
+        first = messages[0]["content"][:180]
+        return (f'Aiyoh, we started with “{first}”. Uncle got listen lah. '
+                "This demo only knows a small menu of fixed replies, not how to reason about every follow-up. "
+                "Try a drink order, work complaint, or Singlish question.") + note
     return (
         "Eh, come sit lah. Stand there for what, you blocking the fan.\n\n"
         "Uncle got kopi, strong opinions, and absolutely no customer-service training. "

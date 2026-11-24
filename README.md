@@ -4,7 +4,8 @@ A heavy-Singlish, slightly rude kopitiam uncle to lim kopi with. Expect cheeky r
 blunt but useful advice, and a warm coffee-shop interface. Uncle is a fictional AI
 character; both live providers receive the same server-owned persona instructions.
 Without a key, the clearly labelled scripted demo has fixed food, work and Singlish
-responses and a contextual follow-up template — it is not an AI model.
+responses, a small drink/food menu, and sugar/ice/spice follow-up templates — it is not
+an AI model or an ordering service. Unrecognized follow-ups say what the demo supports.
 
 A small, dependency-free chatbot starter: a responsive chat page, local conversation history, and a Python server with optional Claude and OpenAI connections.
 
