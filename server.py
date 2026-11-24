@@ -115,7 +115,7 @@ def demo_reply(messages):
         if kind == "drink":
             # Ignore explicitly rejected modifier phrases wherever they occur.
             # This remains a small phrase menu, not general language understanding.
-            drink_prompt = re.sub(r"\b(?:not|instead of|rather than)\s+(?:(?:extra|more|less|added)\s+)?(?:sugar|sweet|hot|warm|iced?|cold|peng)\b", "", prompt)
+            drink_prompt = re.sub(r"\b(?:not|instead of|rather than)\s+(?:(?:extra|more|less|added|no|without)(?: any)?\s+)?(?:sugar|sweet|hot|warm|iced?|cold|peng)\b", "", prompt)
             drink_words = set(re.findall(r"[a-z]+", drink_prompt))
             if re.search(r"\b(?:no|without)\s+(?:any\s+)?ice\b", drink_prompt):
                 temperature = "No ice"

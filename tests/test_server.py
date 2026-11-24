@@ -167,6 +167,7 @@ class ChatHTTPTests(unittest.TestCase):
                                   ("iced instead of hot", "Iced (peng)"),
                                   ("not hot, iced please", "Iced (peng)"),
                                   ("instead of hot, iced please", "Iced (peng)"),
+                                  ("iced instead of no ice", "Iced (peng)"),
                                   ("iced, less sweet", "Iced (peng)")):
             with self.subTest(request=request):
                 status, data = self.chat("one teh tarik, " + request)
