@@ -102,6 +102,12 @@ class ChatHTTPTests(unittest.TestCase):
                 replies.append(data["reply"])
         self.assertEqual(len(set(replies)), 3)
 
+    def test_demo_keywords_match_whole_words_not_fragments(self):
+        status, data = self.chat("Teach me a great Singlish phrase.")
+        self.assertEqual(status, 200)
+        self.assertIn("Can meh?", data["reply"])
+        self.assertNotIn("kopi-o", data["reply"])
+
     def test_config_reports_mode_without_leaking_key(self):
         with patch.dict(os.environ, {"OPENAI_API_KEY": "test-secret-do-not-expose"}):
             status, _, body = self.request("GET", "/api/config")

@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 import socket
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -65,7 +66,7 @@ def validate_messages(payload):
 
 def demo_reply(messages):
     """Scripted responses exercise the interface without an API key or AI claims."""
-    prompt = messages[-1]["content"].lower()
+    words = set(re.findall(r"[a-z]+", messages[-1]["content"].lower()))
     note = "\n\nThis is a scripted demo, not a live AI reply."
     if len(messages) > 1:
         first = messages[0]["content"][:180]
@@ -74,20 +75,20 @@ def demo_reply(messages):
             "Uncle got listen lah.\n\nBut this demo only got fixed lines — cannot actually "
             "think about your follow-up yet. Connect the AI, then we properly lim kopi and talk."
         ) + note
-    if any(word in prompt for word in ("kopi", "coffee", "lunch", "food", "eat")):
+    if words & {"kopi", "coffee", "lunch", "food", "eat"}:
         return (
             "Eight-dollar kopi? Wah, inside got gold bar is it? Uncle hear already also heart pain.\n\n"
             "Go downstairs, order kopi-o kosong if you want black, no sugar. Add kaya toast "
             "and soft-boiled eggs, settle. Your wallet also can breathe a bit lah."
         ) + note
-    if any(word in prompt for word in ("work", "boss", "sian", "meeting", "job")):
+    if words & {"work", "boss", "sian", "meeting", "job"}:
         return (
             "Another meeting? Your boss collecting meetings like loyalty points ah?\n\n"
             "Ask one thing first: what decision we making? If nobody can answer, "
             "ask whether a short message can settle it. Don't quietly suffer then "
             "complain to your kopi lah. Kopi cannot approve your leave."
         ) + note
-    if any(word in prompt for word in ("singlish", "shiok", "lah", "teach", "explain")):
+    if words & {"singlish", "shiok", "lah", "teach", "explain"}:
         return (
             "Singlish not just English then sprinkle 'lah' like pepper, hor. Got rhythm one.\n\n"
             "'Can' means yes. 'Can or not?' means possible? 'Can lah' means can, "
