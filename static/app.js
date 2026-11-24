@@ -53,8 +53,18 @@ function save(chat, deletedId = null, existing = false) {
         return;
       }
       chat.updatedAt = Date.now();
-      localStorage.setItem(storageKey + chat.id, JSON.stringify(chat));
+      // Make room for the newest 20 before writing; restore evictions if it fails.
+      const evicted = readChats().filter((c) => c.id !== chat.id).slice(maxChats - 1);
+      const backups = evicted.map((c) => [storageKey + c.id, localStorage.getItem(storageKey + c.id)]);
+      for (const [key] of backups) localStorage.removeItem(key);
+      try {
+        localStorage.setItem(storageKey + chat.id, JSON.stringify(chat));
+      } catch (error) {
+        for (const [key, value] of backups) if (value !== null) localStorage.setItem(key, value);
+        throw error;
+      }
       unsavedChats.delete(chat.id);
+      for (const old of evicted) unsavedChats.delete(old.id);
     }
     const latest = readChats();
     for (const old of latest.slice(maxChats)) localStorage.removeItem(storageKey + old.id);

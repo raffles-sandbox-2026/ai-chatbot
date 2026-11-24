@@ -43,3 +43,23 @@ test('a failed update shadows the stale persisted reply for this visit', () => {
   store.run(`save(null, 'other');`);
   assert.equal(store.run(`chats.find(c => c.id === 'edited').messages[0].content`), 'new reply');
 });
+
+test('the newest 20 fit at quota by evicting the oldest before writing', () => {
+  const initial = Array.from({ length: 20 }, (_, i) => ({ ...chat('c' + String(i).padStart(2, '0')), updatedAt: i }));
+  const quota = initial.reduce((total, c) => total + JSON.stringify(c).length, 0) + 20;
+  const store = historyStore(initial, quota);
+  store.run(`save(${JSON.stringify(chat('new'))});`);
+  assert.ok(store.values.has('ai-chatbot.chat.v2.new'));
+  assert.ok(!store.values.has('ai-chatbot.chat.v2.c00'));
+  assert.equal(store.values.size, 20);
+});
+
+test('an oversized replacement does not erase the oldest persisted chat', () => {
+  const initial = Array.from({ length: 20 }, (_, i) => ({ ...chat('c' + String(i).padStart(2, '0')), updatedAt: i }));
+  const quota = initial.reduce((total, c) => total + JSON.stringify(c).length, 0);
+  const store = historyStore(initial, quota);
+  store.run(`save(${JSON.stringify(chat('new', 'x'.repeat(4000)))});`);
+  assert.ok(store.values.has('ai-chatbot.chat.v2.c00'));
+  assert.equal(store.values.size, 20);
+  assert.ok(store.run(`readChats().some(c => c.id === 'new')`));
+});
