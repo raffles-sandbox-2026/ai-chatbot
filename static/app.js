@@ -1,0 +1,208 @@
+"use strict";
+
+const $ = (selector) => document.querySelector(selector);
+const storageKey = "ai-chatbot.chats.v1";
+const maxChats = 20;
+let chats = [];
+let currentId = null;
+let busy = false;
+let ready = false;
+let live = false;
+let controller = null;
+let storageWarning = "";
+
+function validMessages(messages) {
+  return Array.isArray(messages) && messages.length <= 40 && messages.length % 2 === 0 &&
+    messages.every((m, i) => m && m.role === (i % 2 ? "assistant" : "user") &&
+      typeof m.content === "string" && m.content.trim().length > 0 && m.content.length <= 4000);
+}
+
+try {
+  const saved = JSON.parse(localStorage.getItem(storageKey) || "[]");
+  if (Array.isArray(saved)) {
+    chats = saved.filter((c) => c && typeof c.id === "string" && typeof c.title === "string" &&
+      c.title.length <= 80 && validMessages(c.messages) && c.messages.length).slice(0, maxChats);
+  }
+} catch {
+  storageWarning = "Browser storage is unavailable. Chats will last only for this visit.";
+}
+
+function save() {
+  try { localStorage.setItem(storageKey, JSON.stringify(chats)); }
+  catch { showError("Couldn't save this chat in your browser. It will last only for this visit."); }
+}
+
+function showError(message) {
+  $("#error").textContent = message;
+  $("#error").hidden = !message;
+}
+
+function activeChat() { return chats.find((c) => c.id === currentId); }
+
+function makeMessage(role, content, pending = false) {
+  const item = document.createElement("article");
+  item.className = `message ${role}${pending ? " pending" : ""}`;
+  const name = document.createElement("div");
+  name.className = "message-name";
+  name.textContent = role === "user" ? "You" : (live ? "Assistant" : "Demo assistant");
+  const body = document.createElement("div");
+  body.className = "message-body";
+  body.textContent = content;
+  item.append(name, body);
+  return item;
+}
+
+function updateControls() {
+  $("#send").disabled = !busy && (!ready || !$("#prompt").value.trim());
+  $("#send").type = busy ? "button" : "submit";
+  $("#send").textContent = busy ? "■" : "↑";
+  $("#send").setAttribute("aria-label", busy ? "Stop response" : "Send message");
+  $("#prompt").disabled = busy;
+  $("#new-chat").disabled = busy;
+  $("#clear-chat").disabled = busy || !activeChat();
+  document.querySelectorAll(".history-item, .suggestion").forEach((b) => { b.disabled = busy || !ready; });
+}
+
+function render() {
+  const chat = activeChat();
+  $("#welcome").hidden = Boolean(chat);
+  $("#chat-title").textContent = chat?.title || "New conversation";
+  $("#messages").replaceChildren(...(chat?.messages || []).map((m) => makeMessage(m.role, m.content)));
+  $("#chat-list").replaceChildren();
+  for (const saved of chats) {
+    const button = document.createElement("button");
+    button.className = "history-item";
+    button.textContent = saved.title;
+    button.title = saved.title;
+    if (saved.id === currentId) button.setAttribute("aria-current", "page");
+    button.addEventListener("click", () => {
+      if (busy) return;
+      currentId = saved.id;
+      $("#prompt").value = "";
+      showError("");
+      render();
+      scrollToBottom();
+    });
+    $("#chat-list").append(button);
+  }
+  $("#history-empty").hidden = chats.length > 0;
+  updateControls();
+}
+
+function scrollToBottom() {
+  const scroll = $("#conversation-scroll");
+  scroll.scrollTop = scroll.scrollHeight;
+}
+
+async function sendMessage(event) {
+  event.preventDefault();
+  const content = $("#prompt").value.trim();
+  if (busy || !ready || !content) return;
+  if (content.length > 4000) { showError("Please keep messages under 4,000 characters."); return; }
+  showError("");
+  const existing = activeChat();
+  const chat = existing || { id: crypto.randomUUID(), title: content.slice(0, 60), messages: [] };
+  // Keep complete user/assistant pairs, with room for the next user message.
+  const messages = [...chat.messages.slice(-38), { role: "user", content }];
+  $("#welcome").hidden = true;
+  $("#messages").append(makeMessage("user", content), makeMessage("assistant", "Thinking…", true));
+  $("#prompt").value = "";
+  busy = true;
+  controller = new AbortController();
+  const timeout = setTimeout(() => controller?.abort("timeout"), 38000);
+  updateControls();
+  scrollToBottom();
+  try {
+    const response = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages }),
+      signal: controller.signal,
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "Couldn't send your message. Please try again.");
+    if (typeof result.reply !== "string" || !result.reply.trim()) throw new Error("The reply was empty. Please try again.");
+    chat.messages = [...messages, { role: "assistant", content: result.reply }];
+    chats = [chat, ...chats.filter((c) => c.id !== chat.id)].slice(0, maxChats);
+    currentId = chat.id;
+    save();
+  } catch (error) {
+    $("#prompt").value = content;
+    const cancelled = controller.signal.aborted;
+    showError(cancelled
+      ? (controller.signal.reason === "timeout" ? "The reply took too long. Your message is ready to try again." : "Response stopped. Your message is ready to edit or send again.")
+      : (error instanceof TypeError ? "Can't reach the server. Check your connection and try again." : error.message));
+  } finally {
+    clearTimeout(timeout);
+    busy = false;
+    controller = null;
+    render();
+    scrollToBottom();
+    $("#prompt").focus();
+  }
+}
+
+$("#chat-form").addEventListener("submit", sendMessage);
+$("#prompt").addEventListener("input", updateControls);
+$("#prompt").addEventListener("keydown", (event) => {
+  if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
+    event.preventDefault();
+    $("#chat-form").requestSubmit();
+  }
+});
+$("#send").addEventListener("click", () => { if (busy) controller?.abort("stopped"); });
+$("#new-chat").addEventListener("click", () => {
+  if (busy) return;
+  currentId = null;
+  $("#prompt").value = "";
+  showError("");
+  render();
+  $("#conversation-scroll").scrollTop = 0;
+  $("#prompt").focus();
+});
+$("#clear-chat").addEventListener("click", () => {
+  if (busy || !activeChat()) return;
+  if (!confirm("Delete this chat from this browser? This can't be undone.")) return;
+  chats = chats.filter((c) => c.id !== currentId);
+  currentId = null;
+  $("#prompt").value = "";
+  showError("");
+  save();
+  render();
+});
+document.querySelectorAll(".suggestion").forEach((button) => {
+  button.addEventListener("click", () => {
+    $("#prompt").value = button.dataset.prompt;
+    $("#chat-form").requestSubmit();
+  });
+});
+for (const selector of ["#about-button", "#details-button"]) {
+  $(selector).addEventListener("click", () => $("#about-dialog").showModal());
+}
+$("#close-about").addEventListener("click", () => $("#about-dialog").close());
+
+async function configure() {
+  try {
+    const response = await fetch("/api/config");
+    if (!response.ok) throw new Error("Configuration unavailable.");
+    const config = await response.json();
+    live = config.mode === "live";
+    ready = true;
+    $("#about-button").textContent = live ? "AI connected ↗" : "Demo preview ↗";
+    $("#mode-label").textContent = live ? "AI connected" : "Demo assistant";
+    if (live) {
+      $("#welcome-note").textContent = "AI connected · A fresh perspective, one message away.";
+      $("#privacy-note").textContent = "AI can make mistakes. Messages are sent to OpenAI; chat history is saved in this browser.";
+      $("#about-mode").textContent = "This server is configured for live AI replies through OpenAI. AI can make mistakes; check important details.";
+    }
+    if (storageWarning) showError(storageWarning);
+  } catch {
+    $("#about-button").textContent = "Unavailable";
+    $("#mode-label").textContent = "Not connected";
+    showError("Can't connect to the chat server. Refresh the page to try again.");
+  }
+  render();
+}
+
+render();
+configure();
