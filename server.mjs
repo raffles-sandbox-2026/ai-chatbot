@@ -67,8 +67,9 @@ async function handleChat(req, res) {
   for await (const chunk of req) {
     size += chunk.length;
     if (size > MAX_BODY_BYTES) {
-      req.destroy();
-      return send(res, 413, { error: 'Request body too large.' });
+      send(res, 413, { error: 'Request body too large.' });
+      res.on('finish', () => req.destroy());
+      return;
     }
     chunks.push(chunk);
   }
