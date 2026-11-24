@@ -144,7 +144,7 @@ class ChatHTTPTests(unittest.TestCase):
         messages = [{"role": "user", "content": "one kopi o please"},
                     {"role": "assistant", "content": "Kopi-o, can."}]
         for follow, expected in (("iced please", "Iced (peng)"), ("no sugar", "no added sugar"),
-                                ("another one", "Another kopi-o"), ("my boss booked a meeting", "boss")):
+                                ("another one", "Another kopi-o"), ("my boss booked another meeting", "boss")):
             with self.subTest(follow=follow):
                 status, _, body = self.request("POST", "/api/chat", {"messages": messages + [{"role": "user", "content": follow}]})
                 self.assertEqual(status, 200)

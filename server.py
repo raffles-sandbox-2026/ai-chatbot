@@ -125,7 +125,7 @@ def demo_reply(messages):
             else:
                 temperature = ""
             temperature_note = f" {temperature} for your {item}, hor." if temperature else ""
-            if words & {"sugar", "sweet", "sweetness", "kosong"} or "siew dai" in prompt:
+            if words & {"sugar", "sweet", "sweeter", "sweetness", "kosong"} or "siew dai" in prompt:
                 if "kosong" in words or re.search(r"\b(?:no|without|zero)\s+(?:any\s+|added\s+)?sugar\b", prompt):
                     advice = ("Ask for no added sugar. For milk drinks, ask about unsweetened milk too; "
                               "condensed milk, Milo powder and syrups can already contain sugar.")
@@ -155,7 +155,7 @@ def demo_reply(messages):
                         "Don't act hero then drink everybody's water.") + order_note
             if named_item:
                 return f"{item.capitalize()}, can. {DEMO_FOOD[item]}" + order_note
-        if not named_item and words & {"another", "more", "two", "second"}:
+        if not named_item and re.fullmatch(r"(?:can i (?:get|have) )?(?:another|one more|two|a second)(?: one| cup| portion)?(?: please)?[.!?]*", prompt.strip()):
             return (f"Another {item}? Can, but tell the stall the quantity properly. "
                     "Uncle gives commentary, not free refills.") + order_note
     if roast_coffee:
