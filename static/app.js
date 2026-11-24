@@ -37,7 +37,9 @@ function readChats(includeUnsaved = true) {
     if (entry.wasPersisted && !combined.has(id)) unsavedChats.delete(id);
     else combined.set(id, entry.chat);
   }
-  return [...combined.values()].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  // Persisted eviction candidates also respect activity whose write failed.
+  const recency = (chat) => unsavedChats.get(chat.id)?.chat.updatedAt || chat.updatedAt || 0;
+  return [...combined.values()].sort((a, b) => recency(b) - recency(a));
 }
 
 try { chats = readChats().slice(0, maxChats); }

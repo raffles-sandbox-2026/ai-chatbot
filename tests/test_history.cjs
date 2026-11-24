@@ -84,3 +84,15 @@ test('another-tab deletion wins over a quota-failed update', () => {
   assert.ok(!store.values.has('ai-chatbot.chat.v2.edited'));
   assert.ok(!store.run(`readChats().some(c => c.id === 'edited')`));
 });
+
+test('eviction respects recent activity even when its reply could not be persisted', () => {
+  const initial = Array.from({ length: 20 }, (_, i) => ({ ...chat('c' + String(i).padStart(2, '0')), updatedAt: i }));
+  const quota = initial.reduce((total, c) => total + JSON.stringify(c).length, 0) + 30;
+  const store = historyStore(initial, quota);
+  store.run(`save(${JSON.stringify(chat('c00', 'x'.repeat(4000)))}, null, true);`);
+  store.run(`save(${JSON.stringify(chat('new'))});`);
+  assert.ok(store.values.has('ai-chatbot.chat.v2.c00'));
+  assert.ok(!store.values.has('ai-chatbot.chat.v2.c01'));
+  assert.equal(store.run(`readChats().find(c => c.id === 'c00').messages[0].content.length`), 4000);
+  assert.equal(store.values.size, 20);
+});
