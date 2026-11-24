@@ -239,10 +239,37 @@ document.querySelectorAll(".suggestion").forEach((button) => {
     $("#chat-form").requestSubmit();
   });
 });
+const aboutDialog = $("#about-dialog");
+let aboutOpener = null;
 for (const selector of ["#about-button", "#details-button"]) {
-  $(selector).addEventListener("click", () => $("#about-dialog").showModal());
+  $(selector).addEventListener("click", (event) => {
+    aboutOpener = event.currentTarget;
+    aboutDialog.showModal();
+    $("#close-about").focus();
+  });
 }
-$("#close-about").addEventListener("click", () => $("#about-dialog").close());
+$("#close-about").addEventListener("click", () => aboutDialog.close());
+aboutDialog.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    event.preventDefault();
+    aboutDialog.close();
+  } else if (event.key === "Tab") {
+    // Native dialog tabbing can reach browser chrome; wrap within our two controls.
+    const controls = [...aboutDialog.querySelectorAll('button:not(:disabled), a[href]')];
+    const first = controls[0];
+    const last = controls.at(-1);
+    if (event.shiftKey && (document.activeElement === first || !aboutDialog.contains(document.activeElement))) {
+      event.preventDefault();
+      last?.focus();
+    } else if (!event.shiftKey && (document.activeElement === last || !aboutDialog.contains(document.activeElement))) {
+      event.preventDefault();
+      first?.focus();
+    }
+  }
+});
+aboutDialog.addEventListener("close", () => {
+  if (aboutOpener?.isConnected) aboutOpener.focus();
+});
 $("#history-toggle").addEventListener("click", () => {
   const open = $("#history-toggle").getAttribute("aria-expanded") !== "true";
   $("#history-toggle").setAttribute("aria-expanded", String(open));
